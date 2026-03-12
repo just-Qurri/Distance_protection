@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
 """
 REL670 - Интерактивный визуализатор дистанционной защиты
 Основан на технической документации ABB REL670
@@ -16,9 +15,9 @@ from models.zone_settings import ZoneSettings
 
 
 def create_demo_zones(visualizer):
-    """Создание демонстрационных зон с правильными параметрами"""
+    """Создание зон с правильными параметрами"""
 
-    # Зона 1: Малая
+    # Зона 1:
     visualizer.add_zone(ZoneSettings(
         x1=3.0, r1=1.5, rfpp=4.0,
         x0=9.0, r0=4.5, rfpe=8.0,
@@ -30,7 +29,7 @@ def create_demo_zones(visualizer):
         color='#2196F3'
     ))
 
-    # Зона 2: Средняя
+    # Зона 2:
     visualizer.add_zone(ZoneSettings(
         x1=5.0, r1=2.5, rfpp=7.0,
         x0=15.0, r0=7.5, rfpe=12.0,
@@ -42,7 +41,7 @@ def create_demo_zones(visualizer):
         color='#4CAF50'
     ))
 
-    # Зона 3: Большая ненаправленная
+    # Зона 3:
     visualizer.add_zone(ZoneSettings(
         x1=8.0, r1=4.0, rfpp=12.0,
         x0=24.0, r0=12.0, rfpe=18.0,
@@ -54,7 +53,7 @@ def create_demo_zones(visualizer):
         color='#FF9800'
     ))
 
-    # Зона 4: Обратного направления
+    # Зона 4:
     visualizer.add_zone(ZoneSettings(
         x1=6.0, r1=3.0, rfpp=9.0,
         x0=18.0, r0=9.0, rfpe=15.0,
@@ -66,7 +65,7 @@ def create_demo_zones(visualizer):
         color='#F44336'
     ))
 
-    # Зона 5: Дальняя
+    # Зона 5:
     visualizer.add_zone(ZoneSettings(
         x1=10.0, r1=5.0, rfpp=15.0,
         x0=30.0, r0=15.0, rfpe=22.0,
