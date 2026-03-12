@@ -1,19 +1,21 @@
+# -*- coding: utf-8 -*-
 """
 Верхняя панель управления
 """
 
 import tkinter as tk
 from tkinter import ttk
-from typing import Dict, Optional
 
-from ui.constants import Colors, Fonts, FaultTypes, InfoItems
+from ui.constants import INFO_ITEMS, FAULT_TYPES
 
 
 class TopPanel:
     """Верхняя панель с кнопками масштабирования и переключателем типа повреждения"""
-
+    
     def __init__(self, parent, visualizer):
         """
+        Инициализация верхней панели
+        
         Args:
             parent: Родительский виджет
             visualizer: Главный объект визуализатора
@@ -21,165 +23,72 @@ class TopPanel:
         self.parent = parent
         self.viz = visualizer
         self.frame = ttk.Frame(parent)
-
-        # UI элементы
-        self.fault_type_label: Optional[ttk.Label] = None
-        self.fault_combo: Optional[ttk.Combobox] = None
-
-        # Данные
-        self.fault_type_names: Dict[str, str] = FaultTypes.get_display_names()
-        self.fault_type_list = FaultTypes.get_list()
-
+        self.fault_type_label = None
+        self.fault_types = FAULT_TYPES
+        
         self._create_widgets()
-        self._bind_events()
-
+        
     def pack(self, **kwargs):
         """Упаковка панели"""
         self.frame.pack(**kwargs)
-
+        
     def _create_widgets(self):
         """Создание виджетов"""
         top_frame = self.frame
-
+        
         # Левая часть - кнопки масштабирования
         left_frame = ttk.Frame(top_frame)
-        left_frame.pack(side=tk.LEFT, fill=tk.Y)
-
-        self._create_zoom_controls(left_frame)
-        self._create_fault_selector(top_frame)
-        self._create_info_panel(top_frame)
-
-    def _create_zoom_controls(self, parent):
-        """Создание элементов управления масштабом"""
+        left_frame.pack(side=tk.LEFT)
+        
         # Кнопки масштабирования
-        zoom_buttons = [
-            ("+", self.viz.zoom_in, "Увеличить масштаб"),
-            ("-", self.viz.zoom_out, "Уменьшить масштаб"),
-            ("↺", self.viz.reset_to_initial_scale, "Сбросить масштаб"),
-            ("⤢", self.viz.fit_to_view, "Подогнать под экран")
-        ]
-
-        for text, command, tooltip in zoom_buttons:
-            btn = ttk.Button(parent, text=text, width=3, command=command)
-            btn.pack(side=tk.LEFT, padx=2)
-            self._add_tooltip(btn, tooltip)
-
+        ttk.Button(left_frame, text="+", width=3, 
+                  command=self.viz.zoom_in).pack(side=tk.LEFT, padx=2)
+        ttk.Button(left_frame, text="-", width=3, 
+                  command=self.viz.zoom_out).pack(side=tk.LEFT, padx=2)
+        ttk.Button(left_frame, text="↺", width=3, 
+                  command=self.viz.reset_to_initial_scale).pack(side=tk.LEFT, padx=2)
+        ttk.Button(left_frame, text="⤢", width=3, 
+                  command=self.viz.fit_to_view).pack(side=tk.LEFT, padx=2)
+        
         # Индикатор масштаба
-        ttk.Label(parent, text="Масштаб:",
-                  font=Fonts.normal()).pack(side=tk.LEFT, padx=(20, 5))
-
-        ttk.Label(parent, textvariable=self.viz.zoom_level,
-                  font=Fonts.normal_bold(),
-                  foreground=Colors.ACCENT).pack(side=tk.LEFT)
-
-    def _create_fault_selector(self, parent):
-        """Создание селектора типа повреждения"""
-        fault_frame = ttk.Frame(parent)
+        ttk.Label(left_frame, text="Масштаб:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(20, 5))
+        ttk.Label(left_frame, textvariable=self.viz.zoom_level, 
+                 font=('Segoe UI', 10, 'bold'), foreground='#2196F3').pack(side=tk.LEFT)
+        
+        # Переключатель типа повреждения
+        fault_frame = ttk.Frame(top_frame)
         fault_frame.pack(side=tk.LEFT, padx=(30, 0))
-
-        ttk.Label(fault_frame, text="Тип:",
-                  font=Fonts.normal()).pack(side=tk.LEFT)
-
-        self.fault_combo = ttk.Combobox(fault_frame,
-                                        textvariable=self.viz.fault_type,
-                                        values=[code for code, _ in self.fault_type_list],
-                                        state="readonly",
-                                        width=10)
-        self.fault_combo.pack(side=tk.LEFT, padx=5)
-
-        # Привязываем событие выбора
-        self.fault_combo.bind('<<ComboboxSelected>>', self._on_fault_type_changed)
-
+        
+        ttk.Label(fault_frame, text="Тип:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        fault_combo = ttk.Combobox(fault_frame, textvariable=self.viz.fault_type,
+                                   values=[f[0] for f in self.fault_types],
+                                   state="readonly", width=10)
+        fault_combo.pack(side=tk.LEFT, padx=5)
+        
         # Отображение названия типа повреждения
-        self.fault_type_label = ttk.Label(fault_frame,
-                                          text="",
-                                          font=Fonts.small(),
-                                          foreground=Colors.SECONDARY)
+        self.fault_type_label = ttk.Label(fault_frame, text="", font=('Segoe UI', 9), foreground='#666')
         self.fault_type_label.pack(side=tk.LEFT)
         self.update_fault_type_label()
-
-    def _create_info_panel(self, parent):
-        """Создание панели с информацией об управлении"""
-        info_frame = ttk.Frame(parent)
+        
+        # Информация об управлении
+        info_frame = ttk.Frame(top_frame)
         info_frame.pack(side=tk.RIGHT)
-
-        for icon, text in InfoItems.get_all():
+        
+        for icon, text in INFO_ITEMS:
             if icon == "|":
-                ttk.Label(info_frame, text="|",
-                          font=Fonts.normal(),
-                          foreground=Colors.SEPARATOR).pack(side=tk.LEFT, padx=5)
+                ttk.Label(info_frame, text="|", font=('Segoe UI', 12), 
+                         foreground='#ccc').pack(side=tk.LEFT, padx=5)
             else:
                 frame = ttk.Frame(info_frame)
                 frame.pack(side=tk.LEFT)
-
-                ttk.Label(frame, text=icon,
-                          font=Fonts.normal()).pack(side=tk.LEFT, padx=2)
-
-                ttk.Label(frame, text=text,
-                          font=Fonts.small(),
-                          foreground=Colors.SECONDARY).pack(side=tk.LEFT)
-
-    def _add_tooltip(self, widget, text):
-        """Добавление всплывающей подсказки"""
-
-        def show_tooltip(event):
-            tooltip = tk.Toplevel()
-            tooltip.wm_overrideredirect(True)
-            tooltip.wm_geometry(f"+{event.x_root + 10}+{event.y_root + 10}")
-
-            label = ttk.Label(tooltip, text=text,
-                              background=Colors.TOOLTIP_BG,
-                              relief="solid",
-                              borderwidth=1)
-            label.pack()
-
-            # Автоматическое скрытие через 2 секунды
-            tooltip.after(2000, tooltip.destroy)
-
-            widget.tooltip = tooltip
-
-        widget.bind('<Enter>', show_tooltip)
-
-    def _bind_events(self):
-        """Привязка событий"""
-        # Отслеживаем изменение переменной fault_type
-        self.viz.fault_type.trace_add('write', self._on_fault_type_var_changed)
-
-    def _on_fault_type_changed(self, event=None):
-        self.update_fault_type_label()
-
-    def _on_fault_type_var_changed(self, *args):
-        self.update_fault_type_label()
-
-        if self.fault_combo and self.fault_combo.get() != self.viz.fault_type.get():
-            self.fault_combo.set(self.viz.fault_type.get())
+                ttk.Label(frame, text=icon, font=('Segoe UI', 12)).pack(side=tk.LEFT, padx=2)
+                ttk.Label(frame, text=text, font=('Segoe UI', 9), 
+                         foreground='#666').pack(side=tk.LEFT)
 
     def update_fault_type_label(self):
         """Обновление отображения типа повреждения"""
         fault_type = self.viz.fault_type.get()
-
-        # Используем словарь для быстрого поиска
-        name = self.fault_type_names.get(fault_type)
-
-        if name:
-            self.fault_type_label.config(text=f"({name})",
-                                         foreground=Colors.SECONDARY)
-        else:
-            # Если тип не найден, показываем предупреждение
-            self.fault_type_label.config(text="(Неизвестный тип)",
-                                         foreground=Colors.ERROR)
-
-    def set_fault_type(self, fault_type: str) -> bool:
-        """
-        Установка типа повреждения программно
-        Args:
-            fault_type: код типа повреждения
-        Returns:
-            bool: True если тип установлен, False если тип не найден
-        """
-        if fault_type in self.fault_type_names:
-            self.viz.fault_type.set(fault_type)
-            return True
-        else:
-            print(f"Предупреждение: неизвестный тип '{fault_type}'")
-            return False
+        for code, name in self.fault_types:
+            if code == fault_type:
+                self.fault_type_label.config(text=f"({name})")
+                break

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Вкладка для настройки фазового селектора FDPSPDIS
-Основано на технической документации ABB REL670
 """
 
 import tkinter as tk
@@ -11,106 +10,6 @@ import numpy as np
 from widgets.float_entry import FloatEntry
 from widgets.color_combo import ColorCombo
 from widgets.modern_button import ModernButton
-
-
-class SelectorSettings:
-    """
-    Модель данных для фазового селектора FDPSPDIS
-    Согласно документации REL670
-    """
-
-    def __init__(self):
-        # Основные параметры
-        self.x1 = 5.0  # Positive sequence reactance reach (Ом/фаза)
-        self.x0 = 15.0  # Zero sequence reactance (Ом/фаза)
-
-        # Сопротивления повреждений для Ph-Ph
-        self.rffw_pp = 8.0  # RFFwPP - прямое направление
-        self.rfrv_pp = 4.0  # RFRvPP - обратное направление
-
-        # Сопротивления повреждений для Ph-E
-        self.rffw_pe = 12.0  # RFFwPE - прямое направление
-        self.rfrv_pe = 6.0  # RFRvPE - обратное направление
-
-        # Параметры нагрузки
-        self.rld_fw = 8.0  # RLdFw - резистивная досягаемость вперед
-        self.rld_rv = -3.0  # RLdRv - резистивная досягаемость назад
-        self.arg_ld = 30.0  # ArgLd - угол нагрузки
-
-        # Минимальные токи срабатывания
-        self.imin_op_pp = 10  # IMinOpPP - для Ph-Ph (% от IBase)
-        self.imin_op_pe = 5  # IMinOpPE - для Ph-E (% от IBase)
-
-        # Блокировка по току нулевой последовательности
-        self.in_block_pp = 40  # INBlockPP - блокировка Ph-Ph (% от IPh)
-        self.in_release_pe = 20  # INReleasePE - разрешение Ph-E (% от IPh)
-
-        # Оформление
-        self.enabled = True
-        self.color = '#9C27B0'  # Фиолетовый
-        self.linestyle = '-'
-        self.opacity = 0.8
-
-    def get_polygon_points(self):
-        """
-        Возвращает единую полигональную характеристику фазового селектора
-        Объединяет все 6 измерительных контуров в одну фигуру
-        """
-        points = []
-
-        # Угол характеристики (рекомендуемый 60°)
-        angle_rad = np.radians(60)
-
-        # Эффективное реактивное сопротивление
-        x_effective = (2 * self.x1 + self.x0) / 3
-
-        # 1. Верхняя часть (прямое направление, Ph-Ph)
-        r1 = self.rffw_pp * np.cos(angle_rad)
-        x1 = self.rffw_pp * np.sin(angle_rad)
-        points.append([r1, x1])
-
-        # 2. Верхняя часть (прямое направление, Ph-E)
-        r2 = self.rffw_pe * np.cos(angle_rad)
-        x2 = self.rffw_pe * np.sin(angle_rad)
-        points.append([r2, x2])
-
-        # 3. Точка на положительной оси X
-        points.append([self.rld_fw, 0])
-
-        # 4. Нижняя часть (обратное направление, Ph-E)
-        r3 = self.rfrv_pe * np.cos(-angle_rad)
-        x3 = self.rfrv_pe * np.sin(-angle_rad)
-        points.append([r3, x3])
-
-        # 5. Нижняя часть (обратное направление, Ph-Ph)
-        r4 = self.rfrv_pp * np.cos(-angle_rad)
-        x4 = self.rfrv_pp * np.sin(-angle_rad)
-        points.append([r4, x4])
-
-        # 6. Точка на отрицательной оси X
-        points.append([self.rld_rv, 0])
-
-        # Замыкаем полигон
-        points.append(points[0])
-
-        return points
-
-    def get_bounds(self):
-        """Возвращает границы характеристики"""
-        points = self.get_polygon_points()
-
-        min_r = float('inf')
-        max_r = float('-inf')
-        min_x = float('inf')
-        max_x = float('-inf')
-
-        for r, x in points:
-            min_r = min(min_r, r)
-            max_r = max(max_r, r)
-            min_x = min(min_x, x)
-            max_x = max(max_x, x)
-
-        return min_r, max_r, min_x, max_x
 
 
 class SelectorTab:
@@ -220,7 +119,7 @@ class SelectorTab:
         ).pack(side=tk.RIGHT)
 
     def _create_main_params(self):
-        """Создание основных параметров """
+        """Создание основных параметров"""
         main_frame = ttk.LabelFrame(self.tab, text="Основные параметры", padding=15)
         main_frame.pack(fill=tk.X, pady=5)
 
@@ -248,16 +147,8 @@ class SelectorTab:
         )
         self.vars["x0"] = x0_var
 
-        # Информация о покрытии зоны 2
-        ttk.Label(
-            main_frame,
-            text="⚠️ Должен покрывать зону 2 с запасом 10% ",
-            font=('Segoe UI', 9, 'italic'),
-            foreground='#FF9800'
-        ).pack(anchor=tk.W, pady=(10, 0))
-
     def _create_phph_params(self):
-        """Создание параметров для Ph-Ph """
+        """Создание параметров для Ph-Ph"""
         phph_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-Ph", padding=15)
         phph_frame.pack(fill=tk.X, pady=5)
 
@@ -306,7 +197,7 @@ class SelectorTab:
         self.vars["rfrv_pp"] = rv_pp_var
 
     def _create_phe_params(self):
-        """Создание параметров для Ph-E """
+        """Создание параметров для Ph-E"""
         phe_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-E", padding=15)
         phe_frame.pack(fill=tk.X, pady=5)
 
@@ -354,16 +245,8 @@ class SelectorTab:
         )
         self.vars["rfrv_pe"] = rv_pe_var
 
-        # Предупреждение об обрезании зон
-        ttk.Label(
-            phe_frame,
-            text="⚠️ Должен быть увеличен, чтобы не обрезать характеристику зон ДЗ ",
-            font=('Segoe UI', 9, 'italic'),
-            foreground='#FF9800'
-        ).pack(anchor=tk.W, pady=(10, 0))
-
     def _create_current_params(self):
-        """Создание токовых параметров """
+        """Создание токовых параметров"""
         current_frame = ttk.LabelFrame(self.tab, text="Токовые параметры", padding=15)
         current_frame.pack(fill=tk.X, pady=5)
 
@@ -387,7 +270,7 @@ class SelectorTab:
         FloatEntry(grid, textvariable=imin_pp_var, width=8).grid(
             row=0, column=1, sticky=tk.W, padx=10
         )
-        ttk.Label(grid, text="(мин. ток для Ph-Ph) ", font=('Segoe UI', 8), foreground='#666').grid(
+        ttk.Label(grid, text="(мин. ток для Ph-Ph)", font=('Segoe UI', 8), foreground='#666').grid(
             row=0, column=2, sticky=tk.W, padx=5
         )
 
@@ -398,7 +281,7 @@ class SelectorTab:
         FloatEntry(grid, textvariable=imin_pe_var, width=8).grid(
             row=1, column=1, sticky=tk.W, padx=10
         )
-        ttk.Label(grid, text="(мин. ток для Ph-E) ", font=('Segoe UI', 8), foreground='#666').grid(
+        ttk.Label(grid, text="(мин. ток для Ph-E)", font=('Segoe UI', 8), foreground='#666').grid(
             row=1, column=2, sticky=tk.W, padx=5
         )
 
@@ -415,7 +298,7 @@ class SelectorTab:
         FloatEntry(grid, textvariable=in_block_var, width=8).grid(
             row=3, column=1, sticky=tk.W, padx=10
         )
-        ttk.Label(grid, text="(блокировка Ph-Ph) ", font=('Segoe UI', 8), foreground='#666').grid(
+        ttk.Label(grid, text="(блокировка Ph-Ph)", font=('Segoe UI', 8), foreground='#666').grid(
             row=3, column=2, sticky=tk.W, padx=5
         )
 
@@ -426,14 +309,14 @@ class SelectorTab:
         FloatEntry(grid, textvariable=in_release_var, width=8).grid(
             row=4, column=1, sticky=tk.W, padx=10
         )
-        ttk.Label(grid, text="(разрешение Ph-E) ", font=('Segoe UI', 8), foreground='#666').grid(
+        ttk.Label(grid, text="(разрешение Ph-E)", font=('Segoe UI', 8), foreground='#666').grid(
             row=4, column=2, sticky=tk.W, padx=5
         )
 
         # Рекомендации
         ttk.Label(
             current_frame,
-            text="Рекомендация: IMinOpPP = 2 × IMinOpPE, INBlockPP = 2 × INReleasePE ",
+            text="Рекомендация: IMinOpPP = 2 × IMinOpPE, INBlockPP = 2 × INReleasePE",
             font=('Segoe UI', 9, 'italic'),
             foreground='#2196F3'
         ).pack(anchor=tk.W, pady=(10, 0))

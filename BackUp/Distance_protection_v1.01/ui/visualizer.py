@@ -410,7 +410,7 @@ class REL670Visualizer:
         self.markers.line_position_x = line_pos_x
         self.markers.vertical_line.set_xdata([line_pos_r, line_pos_r])
         self.markers.horizontal_line.set_ydata([line_pos_x, line_pos_x])
-        self.markers._update_measurement_text()
+        self.markers.update_measurement_text()
 
         # Настройка графика
         self.ax.set_xlabel('R (Ом) - Активное сопротивление', fontsize=11, fontweight='bold')

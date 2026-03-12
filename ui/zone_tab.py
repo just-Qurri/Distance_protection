@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Вкладка для настройки параметров зоны (без масштабирования)
+Вкладка для настройки параметров зоны
 """
 
 import tkinter as tk
@@ -62,6 +62,10 @@ class ZoneTab:
         angle_quad2_var = tk.StringVar(value=f"{self.zone.angle_quad2:.1f}")
         angle_quad4_var = tk.StringVar(value=f"{self.zone.angle_quad4:.1f}")
 
+        # Масштабные коэффициенты
+        phph_scale_var = tk.StringVar(value=f"{self.zone.phph_scale:.2f}")
+        phe_scale_var = tk.StringVar(value=f"{self.zone.phe_scale:.2f}")
+
         self.vars = {
             "enabled": enabled_var,
             "direction": direction_var,
@@ -71,7 +75,9 @@ class ZoneTab:
             "x0": x0_var, "r0": r0_var, "rfpe": rfpe_var,
             "rca": rca_var,
             "angle_quad2": angle_quad2_var,
-            "angle_quad4": angle_quad4_var
+            "angle_quad4": angle_quad4_var,
+            "phph_scale": phph_scale_var,
+            "phe_scale": phe_scale_var
         }
 
         self.viz.zone_vars[self.zone.zone_id] = self.vars
@@ -90,6 +96,9 @@ class ZoneTab:
 
         # Углы
         self._create_angles_frame()
+
+        # Масштабирование
+        self._create_scale_frame()
 
         # Оформление
         self._create_style_frame()
@@ -118,6 +127,10 @@ class ZoneTab:
                 self.zone.rca = float(self.vars["rca"].get().replace(',', '.'))
                 self.zone.angle_quad2 = float(self.vars["angle_quad2"].get().replace(',', '.'))
                 self.zone.angle_quad4 = float(self.vars["angle_quad4"].get().replace(',', '.'))
+
+                # Обновляем масштабы
+                self.zone.phph_scale = float(self.vars["phph_scale"].get().replace(',', '.'))
+                self.zone.phe_scale = float(self.vars["phe_scale"].get().replace(',', '.'))
 
                 self.zone.update_angles()
 
@@ -192,6 +205,20 @@ class ZoneTab:
 
         ttk.Label(grid, text="Угол 4 кв.:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
         FloatEntry(grid, textvariable=self.vars["angle_quad4"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+    def _create_scale_frame(self):
+        """Фрейм для масштабирования"""
+        scale_frame = ttk.LabelFrame(self.tab, text="Масштабирование", padding=5)
+        scale_frame.pack(fill=tk.X, pady=5)
+
+        grid = ttk.Frame(scale_frame)
+        grid.pack(fill=tk.X)
+
+        ttk.Label(grid, text="Масштаб Ph-Ph:", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
+        FloatEntry(grid, textvariable=self.vars["phph_scale"], width=8).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(grid, text="Масштаб Ph-E:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
+        FloatEntry(grid, textvariable=self.vars["phe_scale"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
 
     def _create_style_frame(self):
         """Фрейм для оформления"""

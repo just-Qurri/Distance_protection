@@ -282,7 +282,9 @@ class REL670Visualizer:
             "|",
             "Ctrl+ЛКМ - точечный маркер",
             "|",
-            "ПКМ - меню маркеров"
+            "ПКМ - меню маркеров",
+            "|",
+            "Радиус захвата: 50px"
         ]
 
         for instr in instructions:
@@ -295,7 +297,11 @@ class REL670Visualizer:
 
         status_right = ttk.Frame(self.status_bar)
         status_right.pack(side=tk.RIGHT)
-        self._update_status()
+
+        # Создаем метку статуса, но не вызываем _update_status сразу
+        self.status_label = ttk.Label(status_right, text="Загрузка...",
+                                      font=('Segoe UI', 9), foreground='#666666')
+        self.status_label.pack(side=tk.RIGHT)
 
     # ============= МЕТОДЫ УПРАВЛЕНИЯ =============
 
@@ -313,7 +319,7 @@ class REL670Visualizer:
                          y_center + (ylim[1] - y_center) * 0.8)
 
         if self.markers:
-            self.markers.update_marker_positions()  # Исправлено: было update_text_positions
+            self.markers.update_marker_positions()
         self.canvas.draw_idle()
         self._update_zoom_level()
 
@@ -331,7 +337,7 @@ class REL670Visualizer:
                          y_center + (ylim[1] - y_center) * 1.25)
 
         if self.markers:
-            self.markers.update_marker_positions()  # Исправлено: было update_text_positions
+            self.markers.update_marker_positions()
         self.canvas.draw_idle()
         self._update_zoom_level()
 
@@ -347,7 +353,7 @@ class REL670Visualizer:
         self.ax.set_ylim(ylim)
 
         if self.markers:
-            self.markers.update_text_positions()
+            self.markers.update_marker_positions()
 
         self.canvas.draw_idle()
         self._update_zoom_level()
@@ -410,7 +416,7 @@ class REL670Visualizer:
         self.markers.line_position_x = line_pos_x
         self.markers.vertical_line.set_xdata([line_pos_r, line_pos_r])
         self.markers.horizontal_line.set_ydata([line_pos_x, line_pos_x])
-        self.markers._update_measurement_text()
+        self.markers._update_measurement_text()  # ИСПРАВЛЕНО: используем прямой вызов приватного метода
 
         # Настройка графика
         self.ax.set_xlabel('R (Ом) - Активное сопротивление', fontsize=11, fontweight='bold')
@@ -432,6 +438,10 @@ class REL670Visualizer:
         xlim, ylim = self.calculate_optimal_bounds()
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
+
+        # Обновляем позиции маркеров после изменения масштаба
+        if self.markers:
+            self.markers.update_marker_positions()
 
         # Легенда
         handles, labels = self.ax.get_legend_handles_labels()
@@ -467,12 +477,18 @@ class REL670Visualizer:
             self.zoom_level.set(f"{zoom_x * 100:.0f}%")
 
     def _update_status(self):
-        if not hasattr(self, 'status_bar'):
+        """Обновление строки статуса"""
+        if not hasattr(self, 'status_bar') or not hasattr(self, 'status_label'):
             return
 
         visible_zones = sum(1 for z in self.zones if z.enabled)
         fault_type_name = dict(self.FAULT_TYPES).get(self.fault_type.get(), "")
-        stats = self.markers.get_stats() if self.markers else {'point': 0, 'r': 0, 'x': 0}
+
+        # Безопасно получаем статистику маркеров
+        if self.markers and hasattr(self.markers, 'get_stats'):
+            stats = self.markers.get_stats()
+        else:
+            stats = {'point': 0, 'r': 0, 'x': 0}
 
         info_text = (f"Зон: {visible_zones}/{len(self.zones)}  |  "
                      f"Маркеры: ●{stats['point']}  |  "
@@ -480,12 +496,7 @@ class REL670Visualizer:
                      f"X→{stats['x']}  |  "
                      f"Тип: {fault_type_name}")
 
-        if hasattr(self, 'status_label'):
-            self.status_label.config(text=info_text)
-        else:
-            self.status_label = ttk.Label(self.status_bar, text=info_text,
-                                          font=('Segoe UI', 9), foreground='#666666')
-            self.status_label.pack(side=tk.RIGHT)
+        self.status_label.config(text=info_text)
 
     def enable_all_zones(self):
         for zone in self.zones:
@@ -528,7 +539,10 @@ class REL670Visualizer:
         self.root.after(2000, notification.destroy)
 
     def show(self):
+        """Запуск приложения"""
         if self.root is None:
             self.create_window()
             self.plot_characteristics(keep_limits=False)
+            # Обновляем статус после полной инициализации
+            self._update_status()
         self.root.mainloop()
