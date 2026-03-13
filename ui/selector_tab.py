@@ -5,10 +5,9 @@
 
 import tkinter as tk
 from tkinter import ttk
-import numpy as np
 
-from widgets.float_entry import FloatEntry
 from widgets.color_combo import ColorCombo
+from widgets.float_entry import FloatEntry
 from widgets.modern_button import ModernButton
 
 
@@ -55,17 +54,6 @@ class SelectorTab:
         )
         title_label.pack(side=tk.LEFT)
 
-        # Информационная метка
-        info_label = ttk.Label(
-            title_frame,
-            text="ⓘ Единая характеристика для всех 6 контуров",
-            font=('Segoe UI', 10),
-            foreground='#666666'
-        )
-        info_label.pack(side=tk.RIGHT)
-
-        ttk.Separator(self.tab).pack(fill=tk.X, pady=10)
-
         # Включение/отключение
         enabled_frame = ttk.Frame(self.tab)
         enabled_frame.pack(fill=tk.X, pady=5)
@@ -95,16 +83,6 @@ class SelectorTab:
         # Параметры для Ph-E
         self._create_phe_params()
 
-        ttk.Separator(self.tab).pack(fill=tk.X, pady=10)
-
-        # Токовые параметры
-        self._create_current_params()
-
-        ttk.Separator(self.tab).pack(fill=tk.X, pady=10)
-
-        # Оформление
-        self._create_style_params()
-
         # Кнопка сброса
         button_frame = ttk.Frame(self.tab)
         button_frame.pack(fill=tk.X, pady=20)
@@ -120,7 +98,7 @@ class SelectorTab:
 
     def _create_main_params(self):
         """Создание основных параметров"""
-        main_frame = ttk.LabelFrame(self.tab, text="Основные параметры", padding=15)
+        main_frame = ttk.LabelFrame(self.tab, text="Основные параметры", padding=5)
         main_frame.pack(fill=tk.X, pady=5)
 
         # Сетка для параметров
@@ -149,7 +127,7 @@ class SelectorTab:
 
     def _create_phph_params(self):
         """Создание параметров для Ph-Ph"""
-        phph_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-Ph", padding=15)
+        phph_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-Ph", padding=5)
         phph_frame.pack(fill=tk.X, pady=5)
 
         # Заголовок с иконкой
@@ -198,7 +176,7 @@ class SelectorTab:
 
     def _create_phe_params(self):
         """Создание параметров для Ph-E"""
-        phe_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-E", padding=15)
+        phe_frame = ttk.LabelFrame(self.tab, text="Параметры для Ph-E", padding=5)
         phe_frame.pack(fill=tk.X, pady=5)
 
         # Заголовок с иконкой
@@ -244,87 +222,6 @@ class SelectorTab:
             row=4, column=1, sticky=tk.W, padx=10
         )
         self.vars["rfrv_pe"] = rv_pe_var
-
-    def _create_current_params(self):
-        """Создание токовых параметров"""
-        current_frame = ttk.LabelFrame(self.tab, text="Токовые параметры", padding=15)
-        current_frame.pack(fill=tk.X, pady=5)
-
-        # Информация
-        ttk.Label(
-            current_frame,
-            text="Параметры минимальных токов срабатывания и блокировки",
-            font=('Segoe UI', 9, 'italic'),
-            foreground='#666666'
-        ).pack(anchor=tk.W, pady=(0, 10))
-
-        # Сетка для параметров
-        grid = ttk.Frame(current_frame)
-        grid.pack(fill=tk.X)
-
-        # IMinOpPP и IMinOpPE
-        ttk.Label(grid, text="IMinOpPP (%):", font=('Segoe UI', 10)).grid(
-            row=0, column=0, sticky=tk.W, pady=5
-        )
-        imin_pp_var = tk.StringVar(value=f"{self.selector.imin_op_pp}")
-        FloatEntry(grid, textvariable=imin_pp_var, width=8).grid(
-            row=0, column=1, sticky=tk.W, padx=10
-        )
-        ttk.Label(grid, text="(мин. ток для Ph-Ph)", font=('Segoe UI', 8), foreground='#666').grid(
-            row=0, column=2, sticky=tk.W, padx=5
-        )
-
-        ttk.Label(grid, text="IMinOpPE (%):", font=('Segoe UI', 10)).grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        imin_pe_var = tk.StringVar(value=f"{self.selector.imin_op_pe}")
-        FloatEntry(grid, textvariable=imin_pe_var, width=8).grid(
-            row=1, column=1, sticky=tk.W, padx=10
-        )
-        ttk.Label(grid, text="(мин. ток для Ph-E)", font=('Segoe UI', 8), foreground='#666').grid(
-            row=1, column=2, sticky=tk.W, padx=5
-        )
-
-        # Разделитель
-        ttk.Separator(grid, orient='horizontal').grid(
-            row=2, column=0, columnspan=3, sticky=tk.EW, pady=10
-        )
-
-        # INBlockPP и INReleasePE
-        ttk.Label(grid, text="INBlockPP (%):", font=('Segoe UI', 10)).grid(
-            row=3, column=0, sticky=tk.W, pady=5
-        )
-        in_block_var = tk.StringVar(value=f"{self.selector.in_block_pp}")
-        FloatEntry(grid, textvariable=in_block_var, width=8).grid(
-            row=3, column=1, sticky=tk.W, padx=10
-        )
-        ttk.Label(grid, text="(блокировка Ph-Ph)", font=('Segoe UI', 8), foreground='#666').grid(
-            row=3, column=2, sticky=tk.W, padx=5
-        )
-
-        ttk.Label(grid, text="INReleasePE (%):", font=('Segoe UI', 10)).grid(
-            row=4, column=0, sticky=tk.W, pady=5
-        )
-        in_release_var = tk.StringVar(value=f"{self.selector.in_release_pe}")
-        FloatEntry(grid, textvariable=in_release_var, width=8).grid(
-            row=4, column=1, sticky=tk.W, padx=10
-        )
-        ttk.Label(grid, text="(разрешение Ph-E)", font=('Segoe UI', 8), foreground='#666').grid(
-            row=4, column=2, sticky=tk.W, padx=5
-        )
-
-        # Рекомендации
-        ttk.Label(
-            current_frame,
-            text="Рекомендация: IMinOpPP = 2 × IMinOpPE, INBlockPP = 2 × INReleasePE",
-            font=('Segoe UI', 9, 'italic'),
-            foreground='#2196F3'
-        ).pack(anchor=tk.W, pady=(10, 0))
-
-        self.vars["imin_op_pp"] = imin_pp_var
-        self.vars["imin_op_pe"] = imin_pe_var
-        self.vars["in_block_pp"] = in_block_var
-        self.vars["in_release_pe"] = in_release_var
 
     def _create_style_params(self):
         """Создание параметров оформления"""

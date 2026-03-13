@@ -3,7 +3,7 @@
 Модели данных для REL670
 """
 
-from models.zone_settings import ZoneSettings
 from models.selector_settings import SelectorSettings
+from models.zone_settings import Poligon_Settings
 
-__all__ = ['ZoneSettings', 'SelectorSettings']
+__all__ = ['Poligon_Settings', 'SelectorSettings']

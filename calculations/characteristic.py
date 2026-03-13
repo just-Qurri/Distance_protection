@@ -3,15 +3,17 @@
 Класс для расчета полигональной характеристики REL670
 """
 
+from typing import Tuple
+
 import numpy as np
-from typing import List, Tuple
-from models.zone_settings import ZoneSettings
+
+from models.zone_settings import Poligon_Settings
 
 
 class REL670PolygonalCharacteristic:
     """Класс для построения характеристик REL670"""
 
-    def __init__(self, settings: ZoneSettings, fault_type: str = "phph"):
+    def __init__(self, settings: Poligon_Settings, fault_type: str = "phph"):
         """
         Инициализация характеристики
 

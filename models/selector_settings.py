@@ -5,6 +5,7 @@
 
 import numpy as np
 from dataclasses import dataclass
+from typing import List, Tuple
 
 
 @dataclass
@@ -44,49 +45,51 @@ class SelectorSettings:
     linestyle: str = '-'
     opacity: float = 0.8
 
-    def get_polygon_points(self):
+    def get_polygon_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
         """
-        Возвращает единую полигональную характеристику фазового селектора
-        Объединяет все 6 измерительных контуров в одну фигуру
+        Возвращает точки полигона в зависимости от типа повреждения
         """
-        points = []
+        if fault_type == "phph":
+            # Используем параметры для междуфазных КЗ
+            r_reach = self.r1 + self.rfpp / 2  # Активная составляющая
+            x_reach = self.x1  # Реактивная составляющая
+        else:  # "phe"
+            # Используем параметры для однофазных КЗ
+            r_reach = self.r0 + self.rfpe / 2
+            x_reach = self.x0
 
-        # Угол характеристики (рекомендуемый 60°)
-        angle_rad = np.radians(60)
+        # Базовая форма полигона (в относительных координатах)
+        # Точки: (R, X) в порядке обхода
+        base_shape = [
+            (0, 0),  # A - начало координат
+            (-0.3, 1.0),  # B - левый верхний изгиб
+            (0, 1.0),  # C - верхний левый угол
+            (1.0, 1.0),  # D - верхний правый угол
+            (0.8, 0),  # E - правый нижний изгиб
+            (0.8, -0.3)  # F - нижняя точка
+        ]
 
-        # Эффективное реактивное сопротивление
-        x_effective = (2 * self.x1 + self.x0) / 3
+        # Масштабируем базовую форму до реальных размеров зоны
+        scaled_points = [(r * r_reach, x * x_reach) for r, x in base_shape]
 
-        # 1. Верхняя часть (прямое направление, Ph-Ph)
-        r1 = self.rffw_pp * np.cos(angle_rad)
-        x1 = self.rffw_pp * np.sin(angle_rad)
-        points.append([r1, x1])
+        # Применяем направленность
+        if self.direction_mode == "reverse":
+            # Обратное направление - инвертируем X
+            scaled_points = [(r, -x) for r, x in scaled_points]
+        elif self.direction_mode == "non-directional":
+            # Для ненаправленной создаем симметричную относительно оси R
+            points = []
+            # Верхняя часть
+            for r, x in scaled_points:
+                if x >= 0:
+                    points.append([r, x])
+            # Нижняя часть (зеркально)
+            for r, x in reversed(scaled_points):
+                if x > 0:  # избегаем дублирования нулевых точек
+                    points.append([r, -x])
+            return points
 
-        # 2. Верхняя часть (прямое направление, Ph-E)
-        r2 = self.rffw_pe * np.cos(angle_rad)
-        x2 = self.rffw_pe * np.sin(angle_rad)
-        points.append([r2, x2])
-
-        # 3. Точка на положительной оси X
-        points.append([self.rld_fw, 0])
-
-        # 4. Нижняя часть (обратное направление, Ph-E)
-        r3 = self.rfrv_pe * np.cos(-angle_rad)
-        x3 = self.rfrv_pe * np.sin(-angle_rad)
-        points.append([r3, x3])
-
-        # 5. Нижняя часть (обратное направление, Ph-Ph)
-        r4 = self.rfrv_pp * np.cos(-angle_rad)
-        x4 = self.rfrv_pp * np.sin(-angle_rad)
-        points.append([r4, x4])
-
-        # 6. Точка на отрицательной оси X
-        points.append([self.rld_rv, 0])
-
-        # Замыкаем полигон
-        points.append(points[0])
-
-        return points
+        return scaled_points
 
     def get_bounds(self):
         """Возвращает границы характеристики"""

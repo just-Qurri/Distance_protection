@@ -4,17 +4,18 @@
 """
 
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional, Callable
+from typing import List, Tuple
+
 import numpy as np
 
 
 @dataclass
-class ZoneSettings:
+class Poligon_Settings:
     """
     Уставки зоны дистанционной защиты REL670
     """
     # Основные параметры для Ph-Ph (фаза-фаза)
-    x1: float = 5.0  # Positive sequence reactance reach (Ом/фаза)
+    x1: float = 7  # Positive sequence reactance reach (Ом/фаза)
     r1: float = 2.5  # Positive seq. resistance (Ом/фаза)
     rfpp: float = 7.0  # Fault resistance reach for Ph-Ph (Ом/петля)
 
@@ -50,10 +51,6 @@ class ZoneSettings:
         (5, -2)  # F - нижняя точка
     ])
 
-    # Масштабные коэффициенты для разных типов
-    phph_scale: float = 1.0  # Масштаб для Ph-Ph
-    phe_scale: float = 1.5  # Масштаб для Ph-E (больше из-за X0)
-
     # Дополнительные параметры
     name: str = "Zone"
     enabled: bool = True
@@ -61,6 +58,7 @@ class ZoneSettings:
     color_name: str = "Синий"
     linestyle: str = '-'
     zone_id: int = 0
+    phs_id: int = 0
     opacity: float = 0.8
     show_selector: bool = False
 
@@ -83,11 +81,7 @@ class ZoneSettings:
         Возвращает точки полигона в зависимости от типа повреждения
         С масштабированием для разных типов
         """
-        if fault_type == "phe":
-            scale = self.phe_scale
-        else:  # phph
-            scale = self.phph_scale
-
+        scale = 1
         # Масштабируем базовые точки
         scaled_points = [(r * scale, x * scale) for r, x in self.base_points]
 

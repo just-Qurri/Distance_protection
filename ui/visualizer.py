@@ -5,20 +5,19 @@
 
 import tkinter as tk
 from tkinter import ttk
-from typing import List, Optional
-import numpy as np
+from typing import List
+
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from models.zone_settings import ZoneSettings
 from models.selector_settings import SelectorSettings
-from ui.top_panel import TopPanel
-from ui.plot_area import PlotArea
-from ui.zone_tab import ZoneTab
-from ui.selector_tab import SelectorTab
-from ui.markers import MarkerManager
-from ui.events import EventHandler
+from models.zone_settings import Poligon_Settings
 from ui.constants import COLORS, LINESTYLES, FAULT_TYPES
+from ui.events import EventHandler
+from ui.markers import MarkerManager
+from ui.top_panel import TopPanel
+from ui.zone_tab import ZoneTab
 
 
 class REL670Visualizer:
@@ -28,7 +27,9 @@ class REL670Visualizer:
 
     def __init__(self, title="REL670 - Дистанционная защита"):
         self.title = title
-        self.zones: List[ZoneSettings] = []
+        self.zones: List[Poligon_Settings] = []
+        self.phs_list: List[Poligon_Settings] = []
+        self.common_settings_list: List[Poligon_Settings] = []
         self.root = None
         self.figure = None
         self.ax = None
@@ -57,13 +58,32 @@ class REL670Visualizer:
         self.context_x = None
         self.context_y = None
 
-    def add_zone(self, zone: ZoneSettings):
-        """Добавление зоны"""
+    def add_zone(self, zone: Poligon_Settings):
+        """Добавление зоны дистанционной защиты"""
         zone.zone_id = len(self.zones) + 1
+        zone.type = "zone"  # Добавляем тип
         if zone.zone_id <= len(COLORS):
             zone.color = COLORS[zone.zone_id - 1][0]
             zone.color_name = COLORS[zone.zone_id - 1][1]
         self.zones.append(zone)
+
+    def add_phs(self, phs: Poligon_Settings):
+        """Добавление фазного селектора PHS"""
+        phs.phs_id = len(self.phs_list) + 1
+        phs.type = "phs"  # Добавляем тип
+        if phs.phs_id <= len(COLORS):
+            phs.color = COLORS[phs.phs_id - 1][0]
+            phs.color_name = COLORS[phs.phs_id - 1][1]
+        self.phs_list.append(phs)
+
+    def add_common_settings(self, common: Poligon_Settings):
+        """Добавление общих настроек"""
+        common.common_id = len(self.common_settings_list) + 1
+        common.type = "common"  # Добавляем тип
+        if common.common_id <= len(COLORS):
+            common.color = COLORS[common.common_id - 1][0]
+            common.color_name = COLORS[common.common_id - 1][1]
+        self.common_settings_list.append(common)
 
     def calculate_optimal_bounds(self):
         """Расчет оптимальных границ графика"""
@@ -260,7 +280,15 @@ class REL670Visualizer:
         notebook.pack(fill=tk.BOTH, expand=True)
 
         for zone in self.zones:
-            tab = ZoneTab(notebook, zone, self, COLORS, LINESTYLES)
+            tab = ZoneTab(notebook, zone, self, None, None, COLORS, LINESTYLES)
+            self.zone_tabs.append(tab)
+
+        for phs in self.phs_list:
+            tab = ZoneTab(notebook, phs, self, phs, None, COLORS, LINESTYLES)
+            self.zone_tabs.append(tab)
+
+        for common in self.common_settings_list:
+            tab = ZoneTab(notebook, common, self, None, common, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
         self.selector = SelectorSettings()
@@ -393,6 +421,8 @@ class REL670Visualizer:
             if hasattr(self, 'selector') and self.selector.enabled:
                 self._plot_selector()
         else:
+            all_zones = self.zones + self.phs_list + self.common_settings_list
+
             for zone in self.zones:
                 if not zone.enabled:
                     continue
@@ -402,10 +432,17 @@ class REL670Visualizer:
                     points_array = np.array(points)
                     direction_symbol = {"forward": "↑", "reverse": "↓", "non-directional": "↕"}.get(zone.direction_mode,
                                                                                                     "")
+                    if hasattr(zone, 'type') and zone.type == "phs":
+                        label = f"PHS {zone.phs_id}"
+                    elif hasattr(zone, 'type') and zone.type == "common":
+                        label = f"Common {zone.common_id}"
+                    else:
+                        label = f"Зона {zone.zone_id} {direction_symbol}"
+
                     poly = Polygon(points_array, closed=True, fill=None,
                                    edgecolor=zone.color, linestyle=zone.linestyle,
                                    linewidth=2.5, alpha=zone.opacity,
-                                   label=f"Зона {zone.zone_id} {direction_symbol}")
+                                   label=label)
                     self.ax.add_patch(poly)
 
         # Создаем новый менеджер маркеров (синглтон восстановит состояние)
@@ -482,15 +519,19 @@ class REL670Visualizer:
             return
 
         visible_zones = sum(1 for z in self.zones if z.enabled)
+        visible_phs = sum(1 for p in self.phs_list if p.enabled)
+        visible_common = sum(1 for c in self.common_settings_list if c.enabled)
+        total_visible = visible_zones + visible_phs + visible_common
+        total_items = len(self.zones) + len(self.phs_list) + len(self.common_settings_list)
+
         fault_type_name = dict(self.FAULT_TYPES).get(self.fault_type.get(), "")
 
-        # Безопасно получаем статистику маркеров
         if self.markers and hasattr(self.markers, 'get_stats'):
             stats = self.markers.get_stats()
         else:
             stats = {'point': 0, 'r': 0, 'x': 0}
 
-        info_text = (f"Зон: {visible_zones}/{len(self.zones)}  |  "
+        info_text = (f"Элементов: {total_visible}/{total_items}  |  "
                      f"Маркеры: ●{stats['point']}  |  "
                      f"R↓{stats['r']}  |  "
                      f"X→{stats['x']}  |  "
@@ -499,18 +540,14 @@ class REL670Visualizer:
         self.status_label.config(text=info_text)
 
     def enable_all_zones(self):
-        for zone in self.zones:
+        for zone in self.zones + self.phs_list + self.common_settings_list:
             zone.enabled = True
-            if zone.zone_id in self.zone_vars:
-                self.zone_vars[zone.zone_id]["enabled"].set(True)
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 
     def disable_all_zones(self):
-        for zone in self.zones:
+        for zone in self.zones + self.phs_list + self.common_settings_list:
             zone.enabled = False
-            if zone.zone_id in self.zone_vars:
-                self.zone_vars[zone.zone_id]["enabled"].set(False)
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 

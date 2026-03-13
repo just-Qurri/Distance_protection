@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Вкладка для настройки параметров зоны
 """
@@ -6,36 +5,74 @@
 import tkinter as tk
 from tkinter import ttk
 
-from widgets.float_entry import FloatEntry
 from widgets.color_combo import ColorCombo
+from widgets.float_entry import FloatEntry
 
 
 class ZoneTab:
     """Вкладка для настройки параметров зоны"""
 
-    def __init__(self, notebook, zone, visualizer, colors, linestyles):
+    def __init__(self, notebook, zone, visualizer, phs, cs, colors, linestyles):
         """
         Инициализация вкладки
         """
         self.zone = zone
+        self.phs = phs
+        self.common_settings = cs
         self.viz = visualizer
         self.colors = colors
         self.linestyles = linestyles
 
         self.tab = ttk.Frame(notebook, padding=10)
-        notebook.add(self.tab, text=f"Зона {zone.zone_id}")
+        
+        if phs is not None:
+            notebook.add(self.tab, text=f"PHS {phs.phs_id}")
+        elif cs is not None:
+            notebook.add(self.tab, text=f"Common {cs.common_id}")
+        else:
+            notebook.add(self.tab, text=f"Зона {zone.zone_id}")
 
         self.vars = {}
-        self._create_widgets()
+        self._create_DZ_zones()
+        self._create_common_settings()
+        self._create_PHS_setting()
 
-    def _create_widgets(self):
-        """Создание виджетов"""
+    def _create_common_settings(self):
+        """Создание пяти контуров"""
         # Заголовок
         title_frame = ttk.Frame(self.tab)
         title_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(title_frame, text=f"{self.zone.name}",
-                  font=('Segoe UI', 12, 'bold')).pack(side=tk.LEFT)
+                  font=('Segoe UI', 16, 'bold'), foreground='#9C27B0').pack(side=tk.LEFT)
+
+        # Включение зоны
+        enabled_var = tk.BooleanVar(value=self.zone.enabled)
+        ttk.Checkbutton(title_frame, text="Показать",
+                        variable=enabled_var).pack(side=tk.RIGHT)
+
+    def _create_PHS_setting(self):
+        """Создание пяти контуров"""
+        # Заголовок
+        title_frame = ttk.Frame(self.tab)
+        title_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(title_frame, text=f"{self.zone.name}",
+                  font=('Segoe UI', 16, 'bold'), foreground='#9C27B0').pack(side=tk.LEFT)
+
+        # Включение зоны
+        enabled_var = tk.BooleanVar(value=self.zone.enabled)
+        ttk.Checkbutton(title_frame, text="Показать",
+                        variable=enabled_var).pack(side=tk.RIGHT)
+
+    def _create_DZ_zones(self):
+        """Создание пяти контуров"""
+        # Заголовок
+        title_frame = ttk.Frame(self.tab)
+        title_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(title_frame, text=f"{self.zone.name}",
+                  font=('Segoe UI', 16, 'bold'), foreground='#9C27B0').pack(side=tk.LEFT)
 
         # Включение зоны
         enabled_var = tk.BooleanVar(value=self.zone.enabled)
@@ -62,10 +99,6 @@ class ZoneTab:
         angle_quad2_var = tk.StringVar(value=f"{self.zone.angle_quad2:.1f}")
         angle_quad4_var = tk.StringVar(value=f"{self.zone.angle_quad4:.1f}")
 
-        # Масштабные коэффициенты
-        phph_scale_var = tk.StringVar(value=f"{self.zone.phph_scale:.2f}")
-        phe_scale_var = tk.StringVar(value=f"{self.zone.phe_scale:.2f}")
-
         self.vars = {
             "enabled": enabled_var,
             "direction": direction_var,
@@ -76,8 +109,6 @@ class ZoneTab:
             "rca": rca_var,
             "angle_quad2": angle_quad2_var,
             "angle_quad4": angle_quad4_var,
-            "phph_scale": phph_scale_var,
-            "phe_scale": phe_scale_var
         }
 
         self.viz.zone_vars[self.zone.zone_id] = self.vars
@@ -96,9 +127,6 @@ class ZoneTab:
 
         # Углы
         self._create_angles_frame()
-
-        # Масштабирование
-        self._create_scale_frame()
 
         # Оформление
         self._create_style_frame()
@@ -127,11 +155,6 @@ class ZoneTab:
                 self.zone.rca = float(self.vars["rca"].get().replace(',', '.'))
                 self.zone.angle_quad2 = float(self.vars["angle_quad2"].get().replace(',', '.'))
                 self.zone.angle_quad4 = float(self.vars["angle_quad4"].get().replace(',', '.'))
-
-                # Обновляем масштабы
-                self.zone.phph_scale = float(self.vars["phph_scale"].get().replace(',', '.'))
-                self.zone.phe_scale = float(self.vars["phe_scale"].get().replace(',', '.'))
-
                 self.zone.update_angles()
 
                 if self.viz.update_job:
@@ -205,20 +228,6 @@ class ZoneTab:
 
         ttk.Label(grid, text="Угол 4 кв.:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
         FloatEntry(grid, textvariable=self.vars["angle_quad4"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
-
-    def _create_scale_frame(self):
-        """Фрейм для масштабирования"""
-        scale_frame = ttk.LabelFrame(self.tab, text="Масштабирование", padding=5)
-        scale_frame.pack(fill=tk.X, pady=5)
-
-        grid = ttk.Frame(scale_frame)
-        grid.pack(fill=tk.X)
-
-        ttk.Label(grid, text="Масштаб Ph-Ph:", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["phph_scale"], width=8).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(grid, text="Масштаб Ph-E:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["phe_scale"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
 
     def _create_style_frame(self):
         """Фрейм для оформления"""

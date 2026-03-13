@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Виджет для выбора цвета с отображением цветного квадратика и названия
 """
@@ -8,12 +7,9 @@ from tkinter import ttk
 
 
 class ColorCombo(ttk.Frame):
-    """Комбобокс с отображением цвета и названия"""
 
     def __init__(self, parent, textvariable, colors, width=15):
         """
-        Инициализация виджета
-
         Args:
             parent: Родительский виджет
             textvariable: Переменная tkinter для хранения кода цвета
