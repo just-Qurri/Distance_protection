@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from models.selector_settings import SelectorSettings
-from models.zone_settings import Poligon_Settings
+from models.zone_settings import DZ_Settings
 from ui.constants import COLORS, LINESTYLES, FAULT_TYPES
 from ui.events import EventHandler
 from ui.markers import MarkerManager
@@ -27,9 +27,9 @@ class REL670Visualizer:
 
     def __init__(self, title="REL670 - Дистанционная защита"):
         self.title = title
-        self.zones: List[Poligon_Settings] = []
-        self.phs_list: List[Poligon_Settings] = []
-        self.common_settings_list: List[Poligon_Settings] = []
+        self.zones: List[DZ_Settings] = []
+        self.phs = None
+        self.common_settings = None
         self.root = None
         self.figure = None
         self.ax = None
@@ -58,7 +58,7 @@ class REL670Visualizer:
         self.context_x = None
         self.context_y = None
 
-    def add_zone(self, zone: Poligon_Settings):
+    def add_zone(self, zone: DZ_Settings):
         """Добавление зоны дистанционной защиты"""
         zone.zone_id = len(self.zones) + 1
         zone.type = "zone"  # Добавляем тип
@@ -67,23 +67,17 @@ class REL670Visualizer:
             zone.color_name = COLORS[zone.zone_id - 1][1]
         self.zones.append(zone)
 
-    def add_phs(self, phs: Poligon_Settings):
+    def add_phs(self, phs):
         """Добавление фазного селектора PHS"""
-        phs.phs_id = len(self.phs_list) + 1
-        phs.type = "phs"  # Добавляем тип
-        if phs.phs_id <= len(COLORS):
-            phs.color = COLORS[phs.phs_id - 1][0]
-            phs.color_name = COLORS[phs.phs_id - 1][1]
-        self.phs_list.append(phs)
+        phs.type = "phs"
+        self.phs = phs
 
-    def add_common_settings(self, common: Poligon_Settings):
+    def add_common_settings(self, common):
         """Добавление общих настроек"""
-        common.common_id = len(self.common_settings_list) + 1
-        common.type = "common"  # Добавляем тип
-        if common.common_id <= len(COLORS):
-            common.color = COLORS[common.common_id - 1][0]
-            common.color_name = COLORS[common.common_id - 1][1]
-        self.common_settings_list.append(common)
+        common.type = "common"
+        self.common_settings = common
+        from models.zone_settings import set_common_settings
+        set_common_settings(common)
 
     def calculate_optimal_bounds(self):
         """Расчет оптимальных границ графика"""
@@ -92,18 +86,20 @@ class REL670Visualizer:
         all_min_x = float('inf')
         all_max_x = float('-inf')
 
-        visible_zones = [z for z in self.zones if z.enabled]
         fault_type = self.fault_type.get() if self.fault_type else "phph"
 
-        for zone in visible_zones:
-            min_r, max_r, min_x, max_x = zone.get_zone_bounds(fault_type)
-            all_min_r = min(all_min_r, min_r)
-            all_max_r = max(all_max_r, max_r)
-            all_min_x = min(all_min_x, min_x)
-            all_max_x = max(all_max_x, max_x)
+        # DZ зоны - всегда учитываются для расчета границы графика (если включены)
+        for zone in self.zones:
+            if zone.enabled:
+                min_r, max_r, min_x, max_x = zone.get_zone_bounds(fault_type)
+                all_min_r = min(all_min_r, min_r)
+                all_max_r = max(all_max_r, max_r)
+                all_min_x = min(all_min_x, min_x)
+                all_max_x = max(all_max_x, max_x)
 
-        if hasattr(self, 'selector') and self.selector.enabled and fault_type == "selector":
-            points = self.selector.get_polygon_points()
+        # Селектор (PHS) - учитываются для расчета границы графика (если включен)
+        if self.phs and self.phs.enabled:
+            points = self.phs.get_polygon_points()
             for r, x in points:
                 all_min_r = min(all_min_r, r)
                 all_max_r = max(all_max_r, r)
@@ -279,16 +275,19 @@ class REL670Visualizer:
         notebook = ttk.Notebook(parent)
         notebook.pack(fill=tk.BOTH, expand=True)
 
+        # Вкладки для зон
         for zone in self.zones:
             tab = ZoneTab(notebook, zone, self, None, None, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
-        for phs in self.phs_list:
-            tab = ZoneTab(notebook, phs, self, phs, None, COLORS, LINESTYLES)
+        # Вкладка для PHS (если есть)
+        if self.phs:
+            tab = ZoneTab(notebook, self.phs, self, self.phs, None, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
-        for common in self.common_settings_list:
-            tab = ZoneTab(notebook, common, self, None, common, COLORS, LINESTYLES)
+        # Вкладка для Common Settings (если есть)
+        if self.common_settings:
+            tab = ZoneTab(notebook, self.common_settings, self, None, self.common_settings, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
         self.selector = SelectorSettings()
@@ -421,8 +420,7 @@ class REL670Visualizer:
             if hasattr(self, 'selector') and self.selector.enabled:
                 self._plot_selector()
         else:
-            all_zones = self.zones + self.phs_list + self.common_settings_list
-
+            # Отрисовка DZ зон
             for zone in self.zones:
                 if not zone.enabled:
                     continue
@@ -432,20 +430,26 @@ class REL670Visualizer:
                     points_array = np.array(points)
                     direction_symbol = {"forward": "↑", "reverse": "↓", "non-directional": "↕"}.get(zone.direction_mode,
                                                                                                     "")
-                    if hasattr(zone, 'type') and zone.type == "phs":
-                        label = f"PHS {zone.phs_id}"
-                    elif hasattr(zone, 'type') and zone.type == "common":
-                        label = f"Common {zone.common_id}"
-                    else:
-                        label = f"Зона {zone.zone_id} {direction_symbol}"
 
                     poly = Polygon(points_array, closed=True, fill=None,
                                    edgecolor=zone.color, linestyle=zone.linestyle,
                                    linewidth=2.5, alpha=zone.opacity,
-                                   label=label)
+                                   label=f"Зона {zone.zone_id} {direction_symbol}")
                     self.ax.add_patch(poly)
 
-        # Создаем новый менеджер маркеров (синглтон восстановит состояние)
+            # Отрисовка PHS
+            if self.phs and self.phs.enabled:
+                points = self.phs.get_polygon_points()
+                if points and len(points) >= 3:
+                    from matplotlib.patches import Polygon
+                    points_array = np.array(points)
+                    poly = Polygon(points_array, closed=True, fill=None,
+                                   edgecolor=self.phs.color, linestyle=self.phs.linestyle,
+                                   linewidth=2.0, alpha=self.phs.opacity,
+                                   label="PHS")
+                    self.ax.add_patch(poly)
+
+        # Создаем новый менеджер маркеров
         self.markers = MarkerManager(self.ax, self.canvas, self)
 
         # Восстанавливаем позиции основных линий
@@ -453,7 +457,7 @@ class REL670Visualizer:
         self.markers.line_position_x = line_pos_x
         self.markers.vertical_line.set_xdata([line_pos_r, line_pos_r])
         self.markers.horizontal_line.set_ydata([line_pos_x, line_pos_x])
-        self.markers._update_measurement_text()  # ИСПРАВЛЕНО: используем прямой вызов приватного метода
+        self.markers._update_measurement_text()
 
         # Настройка графика
         self.ax.set_xlabel('R (Ом) - Активное сопротивление', fontsize=11, fontweight='bold')
@@ -519,10 +523,10 @@ class REL670Visualizer:
             return
 
         visible_zones = sum(1 for z in self.zones if z.enabled)
-        visible_phs = sum(1 for p in self.phs_list if p.enabled)
-        visible_common = sum(1 for c in self.common_settings_list if c.enabled)
+        visible_phs = 1 if (self.phs and self.phs.enabled) else 0
+        visible_common = 1 if (self.common_settings and self.common_settings.enabled) else 0
         total_visible = visible_zones + visible_phs + visible_common
-        total_items = len(self.zones) + len(self.phs_list) + len(self.common_settings_list)
+        total_items = len(self.zones) + (1 if self.phs else 0) + (1 if self.common_settings else 0)
 
         fault_type_name = dict(self.FAULT_TYPES).get(self.fault_type.get(), "")
 
@@ -540,14 +544,18 @@ class REL670Visualizer:
         self.status_label.config(text=info_text)
 
     def enable_all_zones(self):
-        for zone in self.zones + self.phs_list + self.common_settings_list:
+        for zone in self.zones:
             zone.enabled = True
+        if self.phs:
+            self.phs.enabled = True
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 
     def disable_all_zones(self):
-        for zone in self.zones + self.phs_list + self.common_settings_list:
+        for zone in self.zones:
             zone.enabled = False
+        if self.phs:
+            self.phs.enabled = False
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 

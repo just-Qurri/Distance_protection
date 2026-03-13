@@ -325,35 +325,3 @@ class SelectorTab:
         self.vars["opacity"].set("0.8")
 
         self._show_notification("Сброшено к рекомендуемым значениям")
-
-    def _show_notification(self, message):
-        """Показ временного уведомления"""
-        if not self.viz.root:
-            return
-
-        notification = tk.Toplevel(self.viz.root)
-        notification.overrideredirect(True)
-        notification.geometry("+{}+{}".format(
-            self.viz.root.winfo_rootx() + self.viz.root.winfo_width() - 300,
-            self.viz.root.winfo_rooty() + 50
-        ))
-
-        frame = tk.Frame(
-            notification,
-            bg='#333333',
-            padx=20,
-            pady=10,
-            relief='flat'
-        )
-        frame.pack()
-
-        label = tk.Label(
-            frame,
-            text=message,
-            bg='#333333',
-            fg='white',
-            font=('Segoe UI', 10)
-        )
-        label.pack()
-
-        self.viz.root.after(2000, notification.destroy)

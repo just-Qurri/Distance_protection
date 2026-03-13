@@ -14,7 +14,8 @@ from ui.main_settings import RelaySettings
 
 if __name__ == "__main__":
     visualizer = REL670Visualizer("REL670 - Дистанционная защита")
+    RelaySettings.create_common_settings(visualizer)
     RelaySettings.create_DZ_zones(visualizer)
     RelaySettings.create_PHS(visualizer)
-    RelaySettings.create_common_settings(visualizer)
+
     visualizer.show()
