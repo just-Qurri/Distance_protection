@@ -114,21 +114,6 @@ class SelectorTab:
         )
         self.vars["x0"] = x0_var
 
-        # Направленность
-        ttk.Label(grid, text="Направленность:", font=('Segoe UI', 10)).grid(
-            row=2, column=0, sticky=tk.W, pady=4
-        )
-        direction_var = tk.StringVar(value=self.selector.direction_mode)
-        dir_combo = ttk.Combobox(
-            grid,
-            textvariable=direction_var,
-            values=["forward", "reverse", "non-directional"],
-            state="readonly",
-            width=15
-        )
-        dir_combo.grid(row=2, column=1, sticky=tk.W, padx=10)
-        self.vars["direction"] = direction_var
-
         # ===== ОТСТРОЙКА ОТ НАГРУЗКИ =====
         ttk.Separator(grid, orient='horizontal').grid(
             row=3, column=0, columnspan=3, sticky=tk.EW, pady=10
@@ -298,7 +283,6 @@ class SelectorTab:
                 self.selector.enabled = self.vars["enabled"].get()
                 self.selector.x1 = float(self.vars["x1"].get().replace(',', '.'))
                 self.selector.x0 = float(self.vars["x0"].get().replace(',', '.'))
-                self.selector.direction_mode = self.vars["direction"].get()
 
                 # Параметры Ph-Ph
                 self.selector.rfpp_forward = float(self.vars["rfpp_forward"].get().replace(',', '.'))
