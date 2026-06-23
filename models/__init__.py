@@ -4,6 +4,6 @@
 """
 
 from models.selector_settings import SelectorSettings
-from models.zone_settings import DZ_Settings
+from models.zone_settings import DZ_Settings, Common_Settings
 
-__all__ = ['DZ_Settings', 'SelectorSettings']
+__all__ = ['DZ_Settings', 'SelectorSettings', 'Common_Settings']

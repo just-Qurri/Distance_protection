@@ -1,7 +1,7 @@
 """
 Настройки реле - конфигурация демо-зон для REL670
 """
-from models.zone_settings import DZ_Settings, PHS_Settings, Common_Settings
+from models.zone_settings import DZ_Settings, Common_Settings
 
 
 class RelaySettings:
@@ -75,25 +75,6 @@ class RelaySettings:
             rfpe=22.0,
             direction_mode="forward",
             name="Пятая зона",
-            enabled=True,
-            color='#9C27B0'
-        ))
-
-    @staticmethod
-    def create_PHS(visualizer):
-        visualizer.add_phs(PHS_Settings(
-            rld_forward=96,
-            rld_reverse=96,
-            angle_load=35,
-            x1=10.0,
-            x0=30.0,
-            rfpp_forward=5.0,
-            rfpp_reverse=5.0,
-            rfpe_forward=6.0,
-            rfpe_reverse=6.0,
-            direction_mode="forward",
-            name="Фазовый селектор (PHS)",
-            load_enabled=True,
             enabled=True,
             color='#9C27B0'
         ))

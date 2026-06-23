@@ -16,6 +16,7 @@ from models.zone_settings import DZ_Settings
 from ui.constants import COLORS, LINESTYLES, FAULT_TYPES
 from ui.events import EventHandler
 from ui.markers import MarkerManager
+from ui.selector_tab import SelectorTab
 from ui.top_panel import TopPanel
 from ui.zone_tab import ZoneTab
 
@@ -28,7 +29,6 @@ class REL670Visualizer:
     def __init__(self, title="REL670 - Дистанционная защита"):
         self.title = title
         self.zones: List[DZ_Settings] = []
-        self.phs = None
         self.common_settings = None
         self.root = None
         self.figure = None
@@ -61,16 +61,11 @@ class REL670Visualizer:
     def add_zone(self, zone: DZ_Settings):
         """Добавление зоны дистанционной защиты"""
         zone.zone_id = len(self.zones) + 1
-        zone.type = "zone"  # Добавляем тип
+        zone.type = "zone"
         if zone.zone_id <= len(COLORS):
             zone.color = COLORS[zone.zone_id - 1][0]
             zone.color_name = COLORS[zone.zone_id - 1][1]
         self.zones.append(zone)
-
-    def add_phs(self, phs):
-        """Добавление фазного селектора PHS"""
-        phs.type = "phs"
-        self.phs = phs
 
     def add_common_settings(self, common):
         """Добавление общих настроек"""
@@ -88,7 +83,7 @@ class REL670Visualizer:
 
         fault_type = self.fault_type.get() if self.fault_type else "phph"
 
-        # DZ зоны - всегда учитываются для расчета границы графика (если включены)
+        # DZ зоны
         for zone in self.zones:
             if zone.enabled:
                 min_r, max_r, min_x, max_x = zone.get_zone_bounds(fault_type)
@@ -97,9 +92,9 @@ class REL670Visualizer:
                 all_min_x = min(all_min_x, min_x)
                 all_max_x = max(all_max_x, max_x)
 
-        # Селектор (PHS) - учитываются для расчета границы графика (если включен)
-        if self.phs and self.phs.enabled:
-            points = self.phs.get_polygon_points()
+        # Фазовый селектор
+        if self.selector and self.selector.enabled:
+            points = self.selector.get_polygon_points(fault_type)
             for r, x in points:
                 all_min_r = min(all_min_r, r)
                 all_max_r = max(all_max_r, r)
@@ -277,21 +272,16 @@ class REL670Visualizer:
 
         # Вкладки для зон
         for zone in self.zones:
-            tab = ZoneTab(notebook, zone, self, None, None, COLORS, LINESTYLES)
-            self.zone_tabs.append(tab)
-
-        # Вкладка для PHS (если есть)
-        if self.phs:
-            tab = ZoneTab(notebook, self.phs, self, self.phs, None, COLORS, LINESTYLES)
+            tab = ZoneTab(notebook, zone, self, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
         # Вкладка для Common Settings (если есть)
         if self.common_settings:
-            tab = ZoneTab(notebook, self.common_settings, self, None, self.common_settings, COLORS, LINESTYLES)
+            tab = ZoneTab(notebook, self.common_settings, self, COLORS, LINESTYLES, is_common=True)
             self.zone_tabs.append(tab)
 
+        # Вкладка для фазового селектора
         self.selector = SelectorSettings()
-        from ui.selector_tab import SelectorTab
         self.selector_tab = SelectorTab(notebook, self.selector, self, COLORS, LINESTYLES)
 
     def _create_status_bar(self, parent):
@@ -325,7 +315,6 @@ class REL670Visualizer:
         status_right = ttk.Frame(self.status_bar)
         status_right.pack(side=tk.RIGHT)
 
-        # Создаем метку статуса, но не вызываем _update_status сразу
         self.status_label = ttk.Label(status_right, text="Загрузка...",
                                       font=('Segoe UI', 9), foreground='#666666')
         self.status_label.pack(side=tk.RIGHT)
@@ -396,12 +385,12 @@ class REL670Visualizer:
         self.update_job = None
 
     def plot_characteristics(self, keep_limits=True):
-        """Построение характеристик"""
+        """Построение характеристик с отстройкой от нагрузки"""
         if self.ax is None:
             return
 
-        # Сохраняем состояние маркеров перед очисткой
-        if self.markers:
+        # Сохраняем состояние маркеров
+        if hasattr(self, 'markers') and self.markers:
             self.markers.save_state()
             line_pos_r = self.markers.line_position_r
             line_pos_x = self.markers.line_position_x
@@ -409,18 +398,86 @@ class REL670Visualizer:
             line_pos_r = 0.0
             line_pos_x = 0.0
 
-        # Очищаем оси
         self.ax.clear()
 
-        # Построение зон и селектора
         fault_type = self.fault_type.get()
         fault_type_name = dict(self.FAULT_TYPES).get(fault_type, "")
 
-        if fault_type == "selector":
-            if hasattr(self, 'selector') and self.selector.enabled:
-                self._plot_selector()
-        else:
-            # Отрисовка DZ зон
+        # ===== ОТРИСОВКА ФАЗОВОГО СЕЛЕКТОРА =====
+        if hasattr(self, 'selector') and self.selector.enabled:
+            from matplotlib.patches import Polygon
+
+            # Основной полигон селектора
+            selector_points = self.selector.get_polygon_points(fault_type)
+            if len(selector_points) >= 3:
+                points_array = np.array(selector_points)
+                poly = Polygon(points_array, closed=True, fill=None,
+                               edgecolor=self.selector.color,
+                               linestyle=self.selector.linestyle,
+                               linewidth=3.0, alpha=self.selector.opacity,
+                               label="Фазовый селектор")
+                self.ax.add_patch(poly)
+
+            # ===== ОТРИСОВКА ОТСТРОЙКИ ОТ НАГРУЗКИ =====
+            if self.selector.load_enabled:
+                # Полигон нагрузки
+                load_polygon = self.selector.get_load_encroachment_polygon()
+                if len(load_polygon) >= 3:
+                    load_array = np.array(load_polygon)
+                    load_patch = Polygon(load_array, closed=True,
+                                         facecolor='#FFEB3B',
+                                         edgecolor='#F57F17',
+                                         alpha=0.2,
+                                         linestyle='--',
+                                         linewidth=1.5,
+                                         label="Зона нагрузки")
+                    self.ax.add_patch(load_patch)
+
+                # Линии отстройки
+                load_lines = self.selector.get_load_encroachment_lines()
+                for x1, y1, x2, y2 in load_lines:
+                    self.ax.plot([x1, x2], [y1, y2],
+                                 color='#F57F17',
+                                 linestyle='--',
+                                 linewidth=1.5,
+                                 alpha=0.7)
+
+                # Подписи
+                arg_load_rad = np.radians(self.selector.arg_load)
+
+                # RLdFw
+                if self.selector.direction_mode in ["forward", "non-directional"]:
+                    r_label = self.selector.rld_forward * 0.7
+                    x_label = r_label * np.tan(arg_load_rad) * 0.7
+                    self.ax.annotate(f'RLdFw={self.selector.rld_forward:.1f}Ω',
+                                     xy=(r_label, x_label),
+                                     fontsize=8, color='#F57F17', fontweight='bold',
+                                     bbox=dict(boxstyle='round,pad=0.2',
+                                               facecolor='white', alpha=0.8))
+
+                # RLdRv
+                if self.selector.direction_mode in ["reverse", "non-directional"]:
+                    r_label = -self.selector.rld_reverse * 0.7
+                    x_label = abs(r_label) * np.tan(arg_load_rad) * 0.7
+                    self.ax.annotate(f'RLdRv={self.selector.rld_reverse:.1f}Ω',
+                                     xy=(r_label, x_label),
+                                     fontsize=8, color='#F57F17', fontweight='bold',
+                                     bbox=dict(boxstyle='round,pad=0.2',
+                                               facecolor='white', alpha=0.8))
+
+                # ArgLd
+                if self.selector.direction_mode in ["forward", "non-directional"]:
+                    max_r = max(self.selector.rld_forward, self.selector.rld_reverse) * 0.5
+                    angle_r = max_r * 0.5
+                    angle_x = angle_r * np.tan(arg_load_rad) * 0.5
+                    self.ax.annotate(f'ArgLd={self.selector.arg_load:.0f}°',
+                                     xy=(angle_r * 0.5, angle_x * 0.5),
+                                     fontsize=8, color='#D84315', fontweight='bold',
+                                     bbox=dict(boxstyle='round,pad=0.2',
+                                               facecolor='white', alpha=0.8))
+
+        # ===== ОТРИСОВКА DZ ЗОН =====
+        if fault_type != "selector":
             for zone in self.zones:
                 if not zone.enabled:
                     continue
@@ -428,25 +485,13 @@ class REL670Visualizer:
                 if points:
                     from matplotlib.patches import Polygon
                     points_array = np.array(points)
-                    direction_symbol = {"forward": "↑", "reverse": "↓", "non-directional": "↕"}.get(zone.direction_mode,
-                                                                                                    "")
+                    direction_symbol = {"forward": "↑", "reverse": "↓",
+                                        "non-directional": "↕"}.get(zone.direction_mode, "")
 
                     poly = Polygon(points_array, closed=True, fill=None,
                                    edgecolor=zone.color, linestyle=zone.linestyle,
                                    linewidth=2.5, alpha=zone.opacity,
                                    label=f"Зона {zone.zone_id} {direction_symbol}")
-                    self.ax.add_patch(poly)
-
-            # Отрисовка PHS
-            if self.phs and self.phs.enabled:
-                points = self.phs.get_polygon_points()
-                if points and len(points) >= 3:
-                    from matplotlib.patches import Polygon
-                    points_array = np.array(points)
-                    poly = Polygon(points_array, closed=True, fill=None,
-                                   edgecolor=self.phs.color, linestyle=self.phs.linestyle,
-                                   linewidth=2.0, alpha=self.phs.opacity,
-                                   label="PHS")
                     self.ax.add_patch(poly)
 
         # Создаем новый менеджер маркеров
@@ -480,7 +525,7 @@ class REL670Visualizer:
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
 
-        # Обновляем позиции маркеров после изменения масштаба
+        # Обновляем позиции маркеров
         if self.markers:
             self.markers.update_marker_positions()
 
@@ -492,23 +537,6 @@ class REL670Visualizer:
 
         self.canvas.draw_idle()
         self._update_zoom_level()
-
-    def _plot_selector(self):
-        """Построение фазового селектора"""
-        if not hasattr(self, 'selector') or not self.selector.enabled:
-            return
-
-        points = self.selector.get_polygon_points()
-        if len(points) < 3:
-            return
-
-        from matplotlib.patches import Polygon
-        points_array = np.array(points)
-        poly = Polygon(points_array, closed=True, fill=None,
-                       edgecolor=self.selector.color, linestyle=self.selector.linestyle,
-                       linewidth=3.0, alpha=self.selector.opacity,
-                       label="Фазовый селектор")
-        self.ax.add_patch(poly)
 
     def _update_zoom_level(self):
         if self.zoom_level and self.ax:
@@ -523,10 +551,10 @@ class REL670Visualizer:
             return
 
         visible_zones = sum(1 for z in self.zones if z.enabled)
-        visible_phs = 1 if (self.phs and self.phs.enabled) else 0
         visible_common = 1 if (self.common_settings and self.common_settings.enabled) else 0
-        total_visible = visible_zones + visible_phs + visible_common
-        total_items = len(self.zones) + (1 if self.phs else 0) + (1 if self.common_settings else 0)
+        visible_selector = 1 if (self.selector and self.selector.enabled) else 0
+        total_visible = visible_zones + visible_common + visible_selector
+        total_items = len(self.zones) + (1 if self.common_settings else 0) + 1
 
         fault_type_name = dict(self.FAULT_TYPES).get(self.fault_type.get(), "")
 
@@ -546,16 +574,16 @@ class REL670Visualizer:
     def enable_all_zones(self):
         for zone in self.zones:
             zone.enabled = True
-        if self.phs:
-            self.phs.enabled = True
+        if self.selector:
+            self.selector.enabled = True
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 
     def disable_all_zones(self):
         for zone in self.zones:
             zone.enabled = False
-        if self.phs:
-            self.phs.enabled = False
+        if self.selector:
+            self.selector.enabled = False
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 
@@ -588,6 +616,5 @@ class REL670Visualizer:
         if self.root is None:
             self.create_window()
             self.plot_characteristics(keep_limits=False)
-            # Обновляем статус после полной инициализации
             self._update_status()
         self.root.mainloop()
