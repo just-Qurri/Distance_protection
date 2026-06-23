@@ -428,46 +428,6 @@ class REL670Visualizer:
                              linewidth=2.0,
                              alpha=0.8)
 
-            # Подписи уставок отстройки
-            # RLdFw
-            r_fw = self.selector.rld_forward
-            self.ax.plot(r_fw, 0, 'o', color='#F57F17', markersize=8, markeredgecolor='#D84315')
-            self.ax.annotate(f'RLdFw = {self.selector.rld_forward:.1f} Ω',
-                             xy=(r_fw, 0),
-                             xytext=(r_fw, -self.selector.rld_forward * 0.3),
-                             fontsize=9, color='#D84315', fontweight='bold',
-                             ha='center',
-                             bbox=dict(boxstyle='round,pad=0.3',
-                                       facecolor='white', edgecolor='#F57F17', alpha=0.9))
-
-            # RLdRv
-            r_rv = -self.selector.rld_reverse
-
-            self.ax.plot(r_rv, 0, 'o', color='#F57F17', markersize=8, markeredgecolor='#D84315')
-            self.ax.annotate(f'RLdRv = {self.selector.rld_reverse:.1f} Ω',
-                             xy=(r_rv, 0),
-                             xytext=(r_rv, -self.selector.rld_reverse * 0.3),
-                             fontsize=9, color='#D84315', fontweight='bold',
-                             ha='center',
-                             bbox=dict(boxstyle='round,pad=0.3',
-                                       facecolor='white', edgecolor='#F57F17', alpha=0.9))
-
-            # ArgLd (дуга)
-            angle_range = np.linspace(0, np.radians(self.selector.arg_load), 30)
-            radius = min(self.selector.rld_forward, self.selector.rld_reverse) * 0.15
-            arc_x = radius * np.cos(angle_range)
-            arc_y = radius * np.sin(angle_range)
-            self.ax.plot(arc_x, arc_y, color='#D84315', linewidth=2.0, alpha=0.9)
-
-            mid_angle = np.radians(self.selector.arg_load) / 2
-            label_r = radius * 1.3 * np.cos(mid_angle)
-            label_x = radius * 1.3 * np.sin(mid_angle)
-            self.ax.annotate(f'ArgLd = {self.selector.arg_load:.0f}°',
-                             xy=(label_r, label_x),
-                             fontsize=10, color='#D84315', fontweight='bold',
-                             bbox=dict(boxstyle='round,pad=0.3',
-                                       facecolor='white', edgecolor='#D84315', alpha=0.9))
-
         # ========================================
         # СЛОЙ 2: Фазовый селектор
         # ========================================
