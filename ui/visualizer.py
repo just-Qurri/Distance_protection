@@ -397,15 +397,29 @@ class REL670Visualizer:
             line_pos_r = 0.0
             line_pos_x = 0.0
 
+        # Очищаем оси
         self.ax.clear()
+
+        # Принудительно удаляем все патчи и линии
+        for patch in self.ax.patches:
+            patch.remove()
+        for line in self.ax.lines:
+            line.remove()
+        for collection in self.ax.collections:
+            collection.remove()
+
+        # Обновляем холст для гарантии
+        self.ax.figure.canvas.draw_idle()
 
         fault_type = self.fault_type.get()
         fault_type_name = dict(self.FAULT_TYPES).get(fault_type, "")
 
         # ========================================
-        # СЛОЙ 1: Зона нагрузки
+        # СЛОЙ 1: Зона нагрузки (только если селектор включен)
         # ========================================
-        if hasattr(self, 'selector') and self.selector.load_enabled:
+        if (hasattr(self, 'selector') and
+                self.selector.load_enabled and
+                self.selector.enabled):
 
             # Заливка зоны нагрузки
             load_polygons = self.selector.get_load_encroachment_polygons()
@@ -429,7 +443,7 @@ class REL670Visualizer:
                              alpha=0.8)
 
         # ========================================
-        # СЛОЙ 2: Фазовый селектор
+        # СЛОЙ 2: Фазовый селектор (полный)
         # ========================================
         if hasattr(self, 'selector') and self.selector.enabled:
             from matplotlib.patches import Polygon
@@ -443,6 +457,58 @@ class REL670Visualizer:
                                linewidth=3.0, alpha=self.selector.opacity,
                                label="Фазовый селектор")
                 self.ax.add_patch(poly)
+
+        # ========================================
+        # СЛОЙ 2.5: Обрезанный селектор
+        # ========================================
+        if (hasattr(self, 'selector') and
+                self.selector.load_enabled and
+                self.selector.enabled):
+            from matplotlib.patches import Polygon
+
+            # Получаем обрезанные точки
+            clipped_points = self.selector.get_clipped_selector_points(fault_type)
+
+            if clipped_points and len(clipped_points) >= 3:
+                points_array = np.array(clipped_points)
+
+                # Заливка обрезанного селектора (полупрозрачная)
+                poly_fill = Polygon(points_array, closed=True,
+                                    facecolor=self.selector.color,
+                                    alpha=0.15,
+                                    label="_nolegend_")
+                self.ax.add_patch(poly_fill)
+
+                # Контур обрезанного селектора (жирная линия)
+                poly_edge = Polygon(points_array, closed=True, fill=None,
+                                    edgecolor='#FF6F00',
+                                    linestyle='-',
+                                    linewidth=4.0,
+                                    alpha=1.0,
+                                    label="Селектор (обрезанный)")
+                self.ax.add_patch(poly_edge)
+
+                # Добавляем точки пересечения
+                intersection_points = self.selector.get_intersection_points(fault_type)
+                if intersection_points:
+                    x_coords = [p[0] for p in intersection_points]
+                    y_coords = [p[1] for p in intersection_points]
+                    self.ax.scatter(x_coords, y_coords,
+                                    color='red', s=80, zorder=10,
+                                    marker='o', edgecolors='white', linewidth=2,
+                                    label="Точки пересечения")
+
+                # Добавляем подписи к точкам пересечения
+                for i, (r, x) in enumerate(intersection_points):
+                    self.ax.annotate(f'({r:.1f}, {x:.1f})',
+                                     xy=(r, x),
+                                     xytext=(10, 10),
+                                     textcoords='offset points',
+                                     fontsize=8,
+                                     bbox=dict(boxstyle='round,pad=0.3',
+                                               facecolor='white',
+                                               edgecolor='red',
+                                               alpha=0.8))
 
         # ========================================
         # СЛОЙ 3: DZ ЗОНЫ
