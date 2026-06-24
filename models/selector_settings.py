@@ -3,7 +3,7 @@
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 import numpy as np
 from shapely.geometry import Polygon
@@ -28,7 +28,8 @@ class SelectorSettings:
     rld_forward: float = 96.0
     rld_reverse: float = 96.0
     arg_load: float = 35.0
-    arg_load_phph: float = 30
+    arg_load_phph: float = 30.0
+    arg_load_3ph: float = 30.0
     load_enabled: bool = True
 
     # ===== Параметры отображения =====
@@ -68,42 +69,78 @@ class SelectorSettings:
                 return list(largest.exterior.coords[:-1])
         return []
 
-    def get_polygon_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_polygon_points(self, fault_type) -> List[Tuple[float, float]]:
         """
         Возвращает точки полигона фазового селектора.
         """
-        if fault_type == "phph":
-            r_forward = self.rfpp_forward
-            r_reverse = self.rfpp_reverse
-        elif fault_type == "phe":
+        if fault_type == "ph-e":
             r_forward = self.rfpe_forward
             r_reverse = self.rfpe_reverse
         else:
-            K3 = 2 / np.sqrt(3)
-            r_forward = K3 * self.rfpe_forward
-            r_reverse = K3 * self.rfpe_reverse
+            r_forward = self.rfpp_forward
+            r_reverse = self.rfpp_reverse
 
-        return self._build_selector(r_forward, r_reverse)
+        return self._build_selector(r_forward, r_reverse, fault_type)
 
-    def _build_selector(self, r_forward: float, r_reverse: float) -> List[Tuple[float, float]]:
+    def _build_selector(self, r_forward: float, r_reverse: float, fault_type):
         """6 точек фазового селектора (шестиугольник)"""
-        x_reach = self.x1
+        koeff_pe = (self.x0 - self.x1) / 3
         tan_60 = np.tan(np.radians(60.0))
-        r_offset = x_reach / tan_60
+        if fault_type == "ph-ph":
+            x_reach = self.x1
+            r_offset = x_reach / tan_60
+            return [
+                # ВЕРХНЯЯ ЧАСТЬ
+                (-r_reverse / 2, x_reach),
+                (r_forward / 2 + r_offset, x_reach),
+                (r_forward / 2, 0),
 
-        return [
-            # ВЕРХНЯЯ ЧАСТЬ
-            (-r_reverse / 2, x_reach),
-            (r_forward / 2 + r_offset, x_reach),
-            (r_forward / 2, 0),
+                # НИЖНЯЯ ЧАСТЬ
+                (r_forward / 2, -x_reach),
+                (-r_reverse / 2 - r_offset, -x_reach),
+                (-r_reverse / 2, 0),
+            ]
 
-            # НИЖНЯЯ ЧАСТЬ
-            (r_forward / 2, -x_reach),
-            (-r_reverse / 2 - r_offset, -x_reach),
-            (-r_reverse / 2, 0),
-        ]
+        elif fault_type == "ph-e":
+            x_reach = self.x1 + koeff_pe
+            r_offset = x_reach / tan_60
+            return [
+                # ВЕРХНЯЯ ЧАСТЬ
+                (-r_reverse, x_reach),
+                (r_forward + r_offset, x_reach),
+                (r_forward, 0),
 
-    def get_load_encroachment_lines(self) -> List[Tuple[float, float, float, float]]:
+                # НИЖНЯЯ ЧАСТЬ
+                (r_forward, -x_reach),
+                (-r_reverse - r_offset, -x_reach),
+                (-r_reverse, 0),
+            ]
+
+        elif fault_type == "3-ph":
+            x_reach = 4 * self.x1 / 3
+            k3 = 2 / np.sqrt(3)
+            sin_30 = np.sin(np.radians(self.arg_load_3ph))
+            cos_30 = np.cos(np.radians(self.arg_load_3ph))
+            return [
+                # ВЕРХНЯЯ ЧАСТЬ
+                (0, x_reach),
+                (0.5 * self.rfpp_forward * k3 * cos_30, x_reach + 0.5 * self.rfpp_forward * k3 * sin_30),
+                (0.5 * self.rfpp_forward * k3 * cos_30, 0.5 * self.rfpp_forward * k3 * sin_30),
+                (self.x1 * k3 * sin_30 + 0.5 * self.rfpp_forward * k3 * cos_30,
+                 -self.x1 * k3 * cos_30 + 0.5 * self.rfpp_forward * k3 * sin_30),
+
+                # НИЖНЯЯ ЧАСТЬ
+                (0, -x_reach),
+                (-0.5 * self.rfpp_reverse * k3 * cos_30, -x_reach - 0.5 * self.rfpp_forward * k3 * sin_30),
+                (-0.5 * self.rfpp_reverse * k3 * cos_30, -0.5 * self.rfpp_forward * k3 * sin_30),
+                (-self.x1 * k3 * sin_30 - 0.5 * self.rfpp_reverse * k3 * cos_30,
+                 self.x1 * k3 * cos_30 - 0.5 * self.rfpp_forward * k3 * sin_30),
+            ]
+
+        else:
+            raise ValueError("Неправильный вид КЗ")
+
+    def get_load_encroachment_lines(self, fault_type):
         """
         Возвращает линии границ зоны нагрузки (только ребра полигонов).
         """
@@ -111,7 +148,7 @@ class SelectorSettings:
             return []
 
         # Получаем полигоны нагрузки
-        load_polygons = self.get_load_encroachment_polygons()
+        load_polygons = self.get_load_encroachment_polygons(fault_type)
         if not load_polygons:
             return []
 
@@ -131,73 +168,105 @@ class SelectorSettings:
 
         return lines
 
-    def get_load_encroachment_polygons(self) -> List[List[Tuple[float, float]]]:
+    def get_load_encroachment_polygons(self, fault_type):
         """
         Полигоны сектора нагрузки для заливки.
         """
         if not self.load_enabled:
             return []
 
-        # Метод должен применяться только для Ph-Ph
-
-        # Начальные точки после поворота на 30 градусов отстройки от нагрузок
-        length_vector_fw = abs(self.rld_forward * np.cos(np.radians(self.arg_load_phph)))
-        length_vector_rv = abs(-self.rld_reverse * np.cos(np.radians(self.arg_load_phph)))
-        new_fw_r = self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.cos(np.radians(self.arg_load_phph))
-        new_rv_r = -self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.cos(np.radians(self.arg_load_phph))
-        new_fw_x = -self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.sin(np.radians(self.arg_load_phph))
-        new_rv_x = self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.sin(np.radians(self.arg_load_phph))
-
-        print(new_fw_r, new_fw_x, new_rv_r, new_rv_x, length_vector_rv,
-              length_vector_fw, "1")
-
-        # Точки пересечения лучей нагрузки
-        length_vector_ench_fw = length_vector_fw / np.cos(np.radians(self.arg_load))
-        length_vector_ench_rv = length_vector_rv / np.cos(np.radians(self.arg_load))
-
-        print(length_vector_ench_fw, length_vector_ench_rv)
-
-        r_cord_arg_ench_1 = np.cos(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
-        x_cord_arg_ench_1 = np.sin(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
-        r_cord_arg_ench_2 = np.cos(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
-        x_cord_arg_ench_2 = np.sin(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
-        r_cord_arg_ench_3 = np.cos(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
-        x_cord_arg_ench_3 = np.sin(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
-        r_cord_arg_ench_4 = np.cos(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
-        x_cord_arg_ench_4 = np.sin(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
-        print(r_cord_arg_ench_1, r_cord_arg_ench_2, r_cord_arg_ench_3, r_cord_arg_ench_4)
-
         # Для отображения и масштаба
-        const_scale = 100
+        const_scale = 1000
 
-        polygons = [
-            [(new_fw_r, new_fw_x), (r_cord_arg_ench_1, x_cord_arg_ench_1),
-             (r_cord_arg_ench_1 * const_scale, x_cord_arg_ench_1 * const_scale),
-             (new_fw_r * const_scale, new_fw_x * const_scale),
-             ],
-            [(new_fw_r, new_fw_x), (r_cord_arg_ench_2, x_cord_arg_ench_2),
-             (r_cord_arg_ench_2 * const_scale, x_cord_arg_ench_2 * const_scale),
-             (new_fw_r * const_scale, new_fw_x * const_scale),
-             ],
-            [(new_rv_r, new_rv_x), (r_cord_arg_ench_3, x_cord_arg_ench_3),
-             (r_cord_arg_ench_3 * const_scale, x_cord_arg_ench_3 * const_scale),
-             (new_rv_r * const_scale, new_rv_x * const_scale),
-             ],
-            [(new_rv_r, new_rv_x), (r_cord_arg_ench_4, x_cord_arg_ench_4),
-             (r_cord_arg_ench_4 * const_scale, x_cord_arg_ench_4 * const_scale),
-             (new_rv_r * const_scale, new_rv_x * const_scale),
-             ]
+        if fault_type == "ph-ph":
+            # Метод должен применяться только для Ph-Ph
 
-        ]
+            # Начальные точки после поворота на 30 градусов отстройки от нагрузок
+            length_vector_fw = abs(self.rld_forward * np.cos(np.radians(self.arg_load_phph)))
+            length_vector_rv = abs(-self.rld_reverse * np.cos(np.radians(self.arg_load_phph)))
+            new_fw_r = self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.cos(
+                np.radians(self.arg_load_phph))
+            new_rv_r = -self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.cos(
+                np.radians(self.arg_load_phph))
+            new_fw_x = -self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.sin(
+                np.radians(self.arg_load_phph))
+            new_rv_x = self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.sin(
+                np.radians(self.arg_load_phph))
 
-        return polygons
+            # Точки пересечения лучей нагрузки
+            length_vector_ench_fw = length_vector_fw / np.cos(np.radians(self.arg_load))
+            length_vector_ench_rv = length_vector_rv / np.cos(np.radians(self.arg_load))
 
-    def _get_merged_load_polygon(self) -> Optional[Polygon]:
+            r_cord_arg_ench_1 = np.cos(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
+            x_cord_arg_ench_1 = np.sin(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
+            r_cord_arg_ench_2 = np.cos(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
+            x_cord_arg_ench_2 = np.sin(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
+            r_cord_arg_ench_3 = np.cos(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
+            x_cord_arg_ench_3 = np.sin(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
+            r_cord_arg_ench_4 = np.cos(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
+            x_cord_arg_ench_4 = np.sin(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
+
+            polygons = [
+                [(new_fw_r, new_fw_x), (r_cord_arg_ench_1, x_cord_arg_ench_1),
+                 (r_cord_arg_ench_1 * const_scale, x_cord_arg_ench_1 * const_scale),
+                 (new_fw_r * const_scale, new_fw_x * const_scale),
+                 ],
+                [(new_fw_r, new_fw_x), (r_cord_arg_ench_2, x_cord_arg_ench_2),
+                 (r_cord_arg_ench_2 * const_scale, x_cord_arg_ench_2 * const_scale),
+                 (new_fw_r * const_scale, new_fw_x * const_scale),
+                 ],
+                [(new_rv_r, new_rv_x), (r_cord_arg_ench_3, x_cord_arg_ench_3),
+                 (r_cord_arg_ench_3 * const_scale, x_cord_arg_ench_3 * const_scale),
+                 (new_rv_r * const_scale, new_rv_x * const_scale),
+                 ],
+                [(new_rv_r, new_rv_x), (r_cord_arg_ench_4, x_cord_arg_ench_4),
+                 (r_cord_arg_ench_4 * const_scale, x_cord_arg_ench_4 * const_scale),
+                 (new_rv_r * const_scale, new_rv_x * const_scale),
+                 ]
+
+            ]
+
+            return polygons
+
+        else:
+
+            r_cord_arg_ench_1 = self.rld_forward
+            x_cord_arg_ench_1 = np.sin(np.radians(self.arg_load)) * self.rld_forward
+            r_cord_arg_ench_2 = self.rld_forward
+            x_cord_arg_ench_2 = np.sin(np.radians(-self.arg_load)) * self.rld_forward
+            r_cord_arg_ench_3 = - self.rld_reverse
+            x_cord_arg_ench_3 = np.sin(np.radians(180 - self.arg_load)) * self.rld_reverse
+            r_cord_arg_ench_4 = - self.rld_reverse
+            x_cord_arg_ench_4 = np.sin(np.radians(180 + self.arg_load)) * self.rld_reverse
+
+            polygons = [
+                [(self.rld_forward, 0), (r_cord_arg_ench_1, x_cord_arg_ench_1),
+                 (r_cord_arg_ench_1 * const_scale, x_cord_arg_ench_1 * const_scale),
+                 (self.rld_forward * const_scale, 0),
+                 ],
+                [(self.rld_forward, 0), (r_cord_arg_ench_2, x_cord_arg_ench_2),
+                 (r_cord_arg_ench_2 * const_scale, x_cord_arg_ench_2 * const_scale),
+                 (self.rld_forward * const_scale, 0),
+                 ],
+                [(-self.rld_reverse, 0), (r_cord_arg_ench_3, x_cord_arg_ench_3),
+                 (r_cord_arg_ench_3 * const_scale, x_cord_arg_ench_3 * const_scale),
+                 (-self.rld_reverse * const_scale, 0),
+                 ],
+                [(-self.rld_reverse, 0), (r_cord_arg_ench_4, x_cord_arg_ench_4),
+                 (r_cord_arg_ench_4 * const_scale, x_cord_arg_ench_4 * const_scale),
+                 (-self.rld_reverse * const_scale, 0),
+                 ]
+
+            ]
+
+            return polygons
+
+    def _get_merged_load_polygon(self, fault_type):
         """Объединяет все полигоны нагрузки в один"""
         if not self.load_enabled:
             return None
 
-        load_polygons = self.get_load_encroachment_polygons()
+        load_polygons = self.get_load_encroachment_polygons(fault_type)
         if not load_polygons:
             return None
 
@@ -207,7 +276,7 @@ class SelectorSettings:
         merged = unary_union(polygons)
         return merged
 
-    def get_clipped_selector_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_clipped_selector_points(self, fault_type):
         """
         Возвращает точки периметра обрезанного фазового селектора.
         """
@@ -219,7 +288,7 @@ class SelectorSettings:
             return []
 
         # Получаем объединенный полигон нагрузки
-        load_polygon = self._get_merged_load_polygon()
+        load_polygon = self._get_merged_load_polygon(fault_type)
         if load_polygon is None or load_polygon.is_empty:
             return selector_points
 
@@ -234,14 +303,14 @@ class SelectorSettings:
         # Возвращаем точки результата
         return self._to_points(result)
 
-    def get_clipped_load_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_clipped_load_points(self, fault_type):
         """
         Возвращает точки зоны нагрузки, обрезанной селектором.
         """
         if not self.load_enabled:
             return []
 
-        load_polygon = self._get_merged_load_polygon()
+        load_polygon = self._get_merged_load_polygon(fault_type)
         if load_polygon is None or load_polygon.is_empty:
             return []
 
@@ -260,13 +329,13 @@ class SelectorSettings:
         # Возвращаем точки результата
         return self._to_points(result)
 
-    def get_selector_perimeter_without_load(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_selector_perimeter_without_load(self, fault_type):
         """
         Возвращает точки периметра селектора за вычетом зоны нагрузки.
         """
         return self.get_clipped_selector_points(fault_type)
 
-    def get_intersection_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_intersection_points(self, fault_type):
         """
         Возвращает точки пересечения границ селектора и нагрузки.
         """
@@ -277,7 +346,7 @@ class SelectorSettings:
         if not selector_points:
             return []
 
-        load_polygon = self._get_merged_load_polygon()
+        load_polygon = self._get_merged_load_polygon(fault_type)
         if load_polygon is None or load_polygon.is_empty:
             return []
 
@@ -311,7 +380,7 @@ class SelectorSettings:
 
         return points
 
-    def get_all_clipped_data(self, fault_type: str = "phph") -> dict:
+    def get_all_clipped_data(self, fault_type) -> dict:
         """
         Возвращает все данные для визуализации обрезанных зон.
         """
@@ -323,6 +392,6 @@ class SelectorSettings:
             'load_clipped': self.get_clipped_load_points(fault_type),
             'intersection_points': self.get_intersection_points(fault_type),
             'selector_full': selector_full,
-            'load_full': self.get_load_encroachment_polygons() if self.load_enabled else [],
+            'load_full': self.get_load_encroachment_polygons(fault_type) if self.load_enabled else [],
             'is_clipped': self.load_enabled and len(selector_clipped) < len(selector_full)
         }

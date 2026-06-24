@@ -76,11 +76,11 @@ class DZ_Settings:
             return 90.0
         return np.degrees(np.arctan(self.x0 / self.r0))
 
-    def get_polygon_points(self, fault_type: str = "phph") -> List[Tuple[float, float]]:
+    def get_polygon_points(self, fault_type: str = "ph-ph") -> List[Tuple[float, float]]:
         """
         Возвращает точки полигона в зависимости от типа повреждения
         """
-        if fault_type != "phph":
+        if fault_type != "ph-ph":
             return []
 
         r1, x1, rfpp = self.r1, self.x1, self.rfpp
@@ -143,7 +143,7 @@ class DZ_Settings:
 
         return []
 
-    def get_zone_bounds(self, fault_type: str = "phph") -> Tuple[float, float, float, float]:
+    def get_zone_bounds(self, fault_type: str = "ph-ph") -> Tuple[float, float, float, float]:
         """Возвращает границы зоны"""
         points = self.get_polygon_points(fault_type)
 

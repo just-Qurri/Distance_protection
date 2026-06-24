@@ -13,13 +13,13 @@ from models.zone_settings import DZ_Settings
 class REL670PolygonalCharacteristic:
     """Класс для построения характеристик REL670"""
 
-    def __init__(self, settings: DZ_Settings, fault_type: str = "phph"):
+    def __init__(self, settings: DZ_Settings, fault_type: str = "ph-ph"):
         """
         Инициализация характеристики
 
         Args:
             settings: Объект с уставками зоны
-            fault_type: Тип повреждения ("phph", "phe", "selector")
+            fault_type: Тип повреждения ("ph-ph", "ph-e", "selector")
         """
         self.settings = settings
         self.fault_type = fault_type
@@ -41,8 +41,8 @@ class REL670PolygonalCharacteristic:
     def get_fault_type_symbol(self) -> str:
         """Возвращает символ типа повреждения"""
         symbols = {
-            "phph": "∿",
-            "phe": "⏚",
+            "ph-ph": "∿",
+            "ph-e": "⏚",
             "selector": "⚡"
         }
         return symbols.get(self.fault_type, "")

@@ -82,7 +82,7 @@ class REL670Visualizer:
         all_min_x = float('inf')
         all_max_x = float('-inf')
 
-        fault_type = self.fault_type.get() if self.fault_type else "phph"
+        fault_type = self.fault_type.get() if self.fault_type else "ph-ph"
 
         # DZ зоны
         for zone in self.zones:
@@ -95,7 +95,7 @@ class REL670Visualizer:
 
         # Фазовый селектор
         if self.selector and self.selector.enabled:
-            points = self.selector.get_polygon_points(fault_type)
+            points = self.selector.get_polygon_points(self.fault_type.get())
             for r, x in points:
                 all_min_r = min(all_min_r, r)
                 all_max_r = max(all_max_r, r)
@@ -134,7 +134,7 @@ class REL670Visualizer:
         self.root.state('zoomed')
 
         self.zoom_level = tk.StringVar(value="100%")
-        self.fault_type = tk.StringVar(value="phph")
+        self.fault_type = tk.StringVar(value="ph-ph")
 
         self._configure_styles()
         self.fault_type.trace('w', lambda *args: self.on_fault_type_change())
@@ -422,7 +422,7 @@ class REL670Visualizer:
                 self.selector.enabled):
 
             # Заливка зоны нагрузки
-            load_polygons = self.selector.get_load_encroachment_polygons()
+            load_polygons = self.selector.get_load_encroachment_polygons(self.fault_type.get())
             for i, poly_points in enumerate(load_polygons):
                 if len(poly_points) >= 3:
                     load_array = np.array(poly_points)
@@ -433,7 +433,7 @@ class REL670Visualizer:
                                             label=label)
                     self.ax.add_patch(load_patch)
 
-            load_lines = self.selector.get_load_encroachment_lines()
+            load_lines = self.selector.get_load_encroachment_lines(self.fault_type.get())
             for x1, y1, x2, y2 in load_lines:
                 self.ax.plot([x1, x2], [y1, y2],
                              color='#F57F17',
@@ -447,7 +447,7 @@ class REL670Visualizer:
         if hasattr(self, 'selector') and self.selector.enabled:
             from matplotlib.patches import Polygon
 
-            selector_points = self.selector.get_polygon_points(fault_type)
+            selector_points = self.selector.get_polygon_points(self.fault_type.get())
             if len(selector_points) >= 3:
                 points_array = np.array(selector_points)
                 poly = Polygon(points_array, closed=True, fill=None,
