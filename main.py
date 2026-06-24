@@ -16,6 +16,4 @@ if __name__ == "__main__":
     visualizer = REL670Visualizer("REL670 - Дистанционная защита")
     RelaySettings.create_common_settings(visualizer)
     RelaySettings.create_DZ_zones(visualizer)
-    # PHS больше не создается
-
     visualizer.show()
