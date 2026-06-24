@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 """
 Модель данных для уставок зоны дистанционной защиты REL670
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
+
+from models.common_settings import Common_Settings
 
 
 @dataclass
@@ -15,23 +16,21 @@ class DZ_Settings:
     Уставки для зон дистанционной защиты REL670
     """
     # Основные параметры для Ph-Ph (фаза-фаза)
-    x1: float = 7.0  # Реактивное сопротивление прямой последовательности (Ом/фаза)
-    r1: float = 2.5  # Активно сопротивление прямой последовательности (Ом/фаза)
-    rfpp: float = 7.0  # Переходное сопротивление при повреждении фаза-фаза (дуга) (Ом/петля)
+    x1: float = 3.0  # Реактивное сопротивление прямой последовательности (Ом/фаза)
+    r1: float = 1.5  # Активно сопротивление прямой последовательности (Ом/фаза)
+    rfpp: float = 5.0  # Переходное сопротивление при повреждении фаза-фаза (дуга) (Ом/петля)
 
     # Параметры для Ph-E (фаза-земля)
-    x0: float = 15.0  # Реактивное сопротивление нулевой последовательности (Ом/фаза)
-    r0: float = 7.5  # Активное сопротивление нулевой последовательности (Ом/фаза)
-    rfpe: float = 10.0  # Переходное сопротивление при повреждении фаза-фаза (дуга, опора ЛЭП) (Ом/петля)
+    x0: float = 9.0  # Реактивное сопротивление нулевой последовательности (Ом/фаза)
+    r0: float = 4.5  # Активное сопротивление нулевой последовательности (Ом/фаза)
+    rfpe: float = 8.0  # Переходное сопротивление при повреждении фаза-фаза (дуга, опора ЛЭП) (Ом/петля)
 
     # Направленность зоны
     direction_mode: str = "forward"  # прямая, обратная, ненаправленная защиты
 
-    # Параметры исключения нагрузки
-    load_encroachment_enabled: bool = False
-    r_load_forward: float = 8.0
-    r_load_reverse: float = -3.0
-    x_load: float = 6.0
+    # Параметры согласования с фазовым селектором и отстройкой от нагрузки
+    phase_selector_enabled: bool = False
+    load__enabled: bool = False
 
     # Дополнительные параметры
     name: str = "Zone"
@@ -51,15 +50,13 @@ class DZ_Settings:
     @property
     def angle_quad2(self):
         """Угол 2-го квадранта из общих настроек"""
-        from models.zone_settings import get_common_settings
-        common = get_common_settings()
+        common = Common_Settings()
         return common.angle_quad2
 
     @property
     def angle_quad4(self):
         """Угол 4-го квадранта из общих настроек"""
-        from models.zone_settings import get_common_settings
-        common = get_common_settings()
+        common = Common_Settings()
         return common.angle_quad4
 
     @property
@@ -76,64 +73,64 @@ class DZ_Settings:
             return 90.0
         return np.degrees(np.arctan(self.x0 / self.r0))
 
-    def get_polygon_points(self, fault_type: str = "ph-ph") -> List[Tuple[float, float]]:
+    def get_polygon_points(self, fault_type):
         """
         Возвращает точки полигона в зависимости от типа повреждения
         """
-        if fault_type != "ph-ph":
-            return []
-
-        r1, x1, rfpp = self.r1, self.x1, self.rfpp
-
-        from models.zone_settings import get_common_settings
-        common = get_common_settings()
+        if fault_type == "ph-e":
+            rn = (self.r0 - self.r1) / 3
+            xn = (self.x0 - self.x1) / 3
+            r, x, r_p = self.r1 + rn, self.x1 + xn, self.rfpe
+            print(r, x, r_p)
+        else:
+            r, x, r_p = self.r1, self.x1, self.rfpp / 2
 
         if self.direction_mode == "non-directional":
             return [
-                (r1, x1),
-                (r1 + rfpp / 2, x1),
-                (rfpp / 2, 0),
-                (rfpp / 2, -x1),
-                (0, -x1),
-                (-(r1 + rfpp / 2), (-x1)),
-                (-rfpp / 2, 0),
-                (-rfpp / 2, x1),
-                (0, x1)
+                (r, x),
+                (r + r_p, x),
+                (r_p, 0),
+                (r_p, -x),
+                (0, -x),
+                (-(r + r_p), (-x)),
+                (-r_p, 0),
+                (-r_p, x),
+                (0, x)
             ]
 
         elif self.direction_mode in ["forward", "reverse"]:
             # Расчет общих точек для forward
-            tan_q2 = np.tan(np.radians(abs(common.angle_quad2)))
-            tan_q4 = np.tan(np.radians(common.angle_quad4 - 90))
+            tan_q2 = np.tan(np.radians(abs(self.angle_quad2)))
+            tan_q4 = np.tan(np.radians(self.angle_quad4 - 90))
 
             # Точки для 2-го квадранта
-            if x1 < tan_q2 * rfpp / 2:
-                x_q2_1, r_q2_1 = -x1, x1 / tan_q2
-                x_q2_2, r_q2_2 = -x1, rfpp / 2
+            if x < tan_q2 * r_p:
+                x_q2_1, r_q2_1 = -x, x / tan_q2
+                x_q2_2, r_q2_2 = -x, r_p
             else:
-                x_q2 = -tan_q2 * rfpp / 2
+                x_q2 = -tan_q2 * r_p
                 x_q2_1 = x_q2_2 = x_q2
-                r_q2_1 = r_q2_2 = rfpp / 2
+                r_q2_1 = r_q2_2 = r_p
 
             # Точки для 4-го квадранта
-            if rfpp / 2 < tan_q4 * x1:
-                r_q4_1, x_q4_1 = -rfpp / 2, tan_q4 * rfpp / 2
-                r_q4_2, x_q4_2 = -rfpp / 2, x1
+            if r_p < tan_q4 * x:
+                r_q4_1, x_q4_1 = -r_p, tan_q4 * r_p
+                r_q4_2, x_q4_2 = -r_p, x
             else:
-                r_q4 = -tan_q4 * x1
+                r_q4 = -tan_q4 * x
                 r_q4_1 = r_q4_2 = r_q4
-                x_q4_1 = x_q4_2 = x1
+                x_q4_1 = x_q4_2 = x
 
             forward_points = [
-                (r1, x1),
-                (r1 + rfpp / 2, x1),
-                (rfpp / 2, 0),
+                (r, x),
+                (r + r_p, x),
+                (r_p, 0),
                 (r_q2_2, x_q2_2),
                 (r_q2_1, x_q2_1),
                 (0, 0),
                 (r_q4_1, x_q4_1),
                 (r_q4_2, x_q4_2),
-                (0, x1)
+                (0, x)
             ]
 
             # Для reverse - зеркальное отражение
@@ -156,54 +153,3 @@ class DZ_Settings:
         max_x = max(p[1] for p in points)
 
         return min_r, max_r, min_x, max_x
-
-
-@dataclass
-class Common_Settings:
-    """
-    Настройки для общих параметров
-    """
-    _instance = None
-
-    # Параметры из вашего примера
-    u_base: float = 115000.0  # Базовое напряжение (В)
-    i_base: float = 600.0  # Базовый ток (А)
-    i_secondary: float = 5.0  # Вторичный ток (А)
-    u_secondary: float = 100.0  # Вторичное напряжение (В)
-    angle_quad2: float = -15.0  # Угол 2-го квадранта
-    angle_quad4: float = 115.0  # Угол 4-го квадранта
-    angle_phs: float = 60.0  # Угол PHS
-
-    # Дополнительные параметры
-    name: str = "Общие настройки (U, I)"
-    enabled: bool = True
-    color: str = '#FF9800'
-    color_name: str = "Оранжевый"
-    linestyle: str = '--'
-    opacity: float = 0.6
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self, **kwargs):
-        if not hasattr(self, '_initialized'):
-            for key, value in kwargs.items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
-            self._initialized = True
-
-
-_common_instance = None
-
-
-def set_common_settings(settings):
-    """Установить глобальные общие настройки"""
-    global _common_instance
-    _common_instance = settings
-
-
-def get_common_settings():
-    """Получить глобальные общие настройки"""
-    return _common_instance

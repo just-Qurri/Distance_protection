@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Polygon as MPLPolygon
 
+from models import common_settings
 from models.selector_settings import SelectorSettings
 from models.zone_settings import DZ_Settings
 from ui.constants import COLORS, LINESTYLES, FAULT_TYPES
@@ -72,8 +73,8 @@ class REL670Visualizer:
         """Добавление общих настроек"""
         common.type = "common"
         self.common_settings = common
-        from models.zone_settings import set_common_settings
-        set_common_settings(common)
+
+        common_settings.set_common_settings(common)
 
     def calculate_optimal_bounds(self):
         """Расчет оптимальных границ графика"""
