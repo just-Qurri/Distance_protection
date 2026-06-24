@@ -3,8 +3,6 @@ class Common_Settings:
     Настройки для общих параметров
     """
     _instance = None
-
-    # Параметры из вашего примера
     u_base: float = 115000.0  # Базовое напряжение (В)
     i_base: float = 600.0  # Базовый ток (А)
     i_secondary: float = 5.0  # Вторичный ток (А)
