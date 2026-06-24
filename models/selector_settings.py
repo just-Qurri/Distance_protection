@@ -231,13 +231,13 @@ class SelectorSettings:
         else:
 
             r_cord_arg_ench_1 = self.rld_forward
-            x_cord_arg_ench_1 = np.sin(np.radians(self.arg_load)) * self.rld_forward
+            x_cord_arg_ench_1 = np.tan(np.radians(self.arg_load)) * self.rld_forward
             r_cord_arg_ench_2 = self.rld_forward
-            x_cord_arg_ench_2 = np.sin(np.radians(-self.arg_load)) * self.rld_forward
+            x_cord_arg_ench_2 = np.tan(np.radians(-self.arg_load)) * self.rld_forward
             r_cord_arg_ench_3 = - self.rld_reverse
-            x_cord_arg_ench_3 = np.sin(np.radians(180 - self.arg_load)) * self.rld_reverse
+            x_cord_arg_ench_3 = np.tan(np.radians(180 - self.arg_load)) * self.rld_reverse
             r_cord_arg_ench_4 = - self.rld_reverse
-            x_cord_arg_ench_4 = np.sin(np.radians(180 + self.arg_load)) * self.rld_reverse
+            x_cord_arg_ench_4 = np.tan(np.radians(180 + self.arg_load)) * self.rld_reverse
 
             polygons = [
                 [(self.rld_forward, 0), (r_cord_arg_ench_1, x_cord_arg_ench_1),
@@ -328,12 +328,6 @@ class SelectorSettings:
 
         # Возвращаем точки результата
         return self._to_points(result)
-
-    def get_selector_perimeter_without_load(self, fault_type):
-        """
-        Возвращает точки периметра селектора за вычетом зоны нагрузки.
-        """
-        return self.get_clipped_selector_points(fault_type)
 
     def get_intersection_points(self, fault_type):
         """
