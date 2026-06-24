@@ -433,7 +433,6 @@ class REL670Visualizer:
                                             label=label)
                     self.ax.add_patch(load_patch)
 
-            # Линии углов нагрузки
             load_lines = self.selector.get_load_encroachment_lines()
             for x1, y1, x2, y2 in load_lines:
                 self.ax.plot([x1, x2], [y1, y2],

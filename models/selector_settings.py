@@ -28,6 +28,7 @@ class SelectorSettings:
     rld_forward: float = 96.0
     rld_reverse: float = 96.0
     arg_load: float = 35.0
+    arg_load_phph: float = 30
     load_enabled: bool = True
 
     # ===== Параметры отображения =====
@@ -104,28 +105,31 @@ class SelectorSettings:
 
     def get_load_encroachment_lines(self) -> List[Tuple[float, float, float, float]]:
         """
-        Линии отстройки от нагрузки
+        Возвращает линии границ зоны нагрузки (только ребра полигонов).
         """
         if not self.load_enabled:
             return []
 
-        tan_load = np.tan(np.radians(self.arg_load))
-        max_r = max(self.rld_forward, self.rld_reverse) * 2.5
+        # Получаем полигоны нагрузки
+        load_polygons = self.get_load_encroachment_polygons()
+        if not load_polygons:
+            return []
 
-        r_fw = self.rld_forward
-        r_rv = -self.rld_reverse
+        lines = []
 
-        return [
-            # Лучи сектора (от начала координат)
-            (0, 0, max_r, max_r * tan_load),  # Луч в I квадранте
-            (0, 0, -max_r, max_r * tan_load),  # Луч в II квадранте
-            (0, 0, -max_r, -max_r * tan_load),  # Луч в III квадранте
-            (0, 0, max_r, -max_r * tan_load),  # Луч в IV квадранте
+        # Для каждого полигона берем его ребра
+        for polygon in load_polygons:
+            if len(polygon) < 3:
+                continue
 
-            # Перпендикуляры в точках RLdFw и RLdRv (границы сектора)
-            (r_fw, -max_r * tan_load, r_fw, max_r * tan_load),  # Перпендикуляр в RLdFw
-            (r_rv, -max_r * tan_load, r_rv, max_r * tan_load),  # Перпендикуляр в -RLdRv
-        ]
+            # Проходим по всем вершинам полигона и берем ребра
+            n = len(polygon)
+            for i in range(n):
+                p1 = polygon[i]
+                p2 = polygon[(i + 1) % n]
+                lines.append((p1[0], p1[1], p2[0], p2[1]))
+
+        return lines
 
     def get_load_encroachment_polygons(self) -> List[List[Tuple[float, float]]]:
         """
@@ -134,24 +138,59 @@ class SelectorSettings:
         if not self.load_enabled:
             return []
 
-        tan_load = np.tan(np.radians(self.arg_load))
-        max_r = max(self.rld_forward, self.rld_reverse) * 2.5
+        # Метод должен применяться только для Ph-Ph
 
-        r_fw = self.rld_forward
-        r_rv = -self.rld_reverse
-        x_fw = r_fw * tan_load
-        x_rv = abs(r_rv) * tan_load
+        # Начальные точки после поворота на 30 градусов отстройки от нагрузок
+        length_vector_fw = abs(self.rld_forward * np.cos(np.radians(self.arg_load_phph)))
+        length_vector_rv = abs(-self.rld_reverse * np.cos(np.radians(self.arg_load_phph)))
+        new_fw_r = self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.cos(np.radians(self.arg_load_phph))
+        new_rv_r = -self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.cos(np.radians(self.arg_load_phph))
+        new_fw_x = -self.rld_forward * np.cos(np.radians(self.arg_load_phph)) * np.sin(np.radians(self.arg_load_phph))
+        new_rv_x = self.rld_reverse * np.cos(np.radians(self.arg_load_phph)) * np.sin(np.radians(self.arg_load_phph))
 
-        return [
-            # I квадрант
-            [(r_fw, 0), (r_fw, x_fw), (max_r, max_r * tan_load), (max_r, 0)],
-            # II квадрант
-            [(r_rv, 0), (r_rv, x_rv), (-max_r, max_r * tan_load), (-max_r, 0)],
-            # III квадрант
-            [(r_rv, 0), (r_rv, -x_rv), (-max_r, -max_r * tan_load), (-max_r, 0)],
-            # IV квадрант
-            [(r_fw, 0), (r_fw, -x_fw), (max_r, -max_r * tan_load), (max_r, 0)],
+        print(new_fw_r, new_fw_x, new_rv_r, new_rv_x, length_vector_rv,
+              length_vector_fw, "1")
+
+        # Точки пересечения лучей нагрузки
+        length_vector_ench_fw = length_vector_fw / np.cos(np.radians(self.arg_load))
+        length_vector_ench_rv = length_vector_rv / np.cos(np.radians(self.arg_load))
+
+        print(length_vector_ench_fw, length_vector_ench_rv)
+
+        r_cord_arg_ench_1 = np.cos(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
+        x_cord_arg_ench_1 = np.sin(np.radians(-self.arg_load_phph + self.arg_load)) * length_vector_ench_fw
+        r_cord_arg_ench_2 = np.cos(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
+        x_cord_arg_ench_2 = np.sin(np.radians(- self.arg_load_phph - self.arg_load)) * length_vector_ench_fw
+        r_cord_arg_ench_3 = np.cos(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
+        x_cord_arg_ench_3 = np.sin(np.radians(180 - self.arg_load_phph - self.arg_load)) * length_vector_ench_rv
+        r_cord_arg_ench_4 = np.cos(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
+        x_cord_arg_ench_4 = np.sin(np.radians(180 - self.arg_load_phph + self.arg_load)) * length_vector_ench_rv
+        print(r_cord_arg_ench_1, r_cord_arg_ench_2, r_cord_arg_ench_3, r_cord_arg_ench_4)
+
+        # Для отображения и масштаба
+        const_scale = 100
+
+        polygons = [
+            [(new_fw_r, new_fw_x), (r_cord_arg_ench_1, x_cord_arg_ench_1),
+             (r_cord_arg_ench_1 * const_scale, x_cord_arg_ench_1 * const_scale),
+             (new_fw_r * const_scale, new_fw_x * const_scale),
+             ],
+            [(new_fw_r, new_fw_x), (r_cord_arg_ench_2, x_cord_arg_ench_2),
+             (r_cord_arg_ench_2 * const_scale, x_cord_arg_ench_2 * const_scale),
+             (new_fw_r * const_scale, new_fw_x * const_scale),
+             ],
+            [(new_rv_r, new_rv_x), (r_cord_arg_ench_3, x_cord_arg_ench_3),
+             (r_cord_arg_ench_3 * const_scale, x_cord_arg_ench_3 * const_scale),
+             (new_rv_r * const_scale, new_rv_x * const_scale),
+             ],
+            [(new_rv_r, new_rv_x), (r_cord_arg_ench_4, x_cord_arg_ench_4),
+             (r_cord_arg_ench_4 * const_scale, x_cord_arg_ench_4 * const_scale),
+             (new_rv_r * const_scale, new_rv_x * const_scale),
+             ]
+
         ]
+
+        return polygons
 
     def _get_merged_load_polygon(self) -> Optional[Polygon]:
         """Объединяет все полигоны нагрузки в один"""
