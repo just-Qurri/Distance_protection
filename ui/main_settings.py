@@ -1,7 +1,7 @@
 """
 Настройки реле - конфигурация демо-зон для REL670
 """
-from models.zone_settings import DZ_Settings, Common_Settings
+from models.zone_settings import DZSettings, CommonSettings
 
 
 class RelaySettings:
@@ -10,7 +10,7 @@ class RelaySettings:
     def create_DZ_zones(visualizer):
         """Создание зон с правильными параметрами"""
         # Зона 1:
-        visualizer.add_zone(DZ_Settings(
+        visualizer.add_zone(DZSettings(
             x1=3.0,
             r1=1.5,
             rfpp=5.0,
@@ -24,7 +24,7 @@ class RelaySettings:
         ))
 
         # Зона 2:
-        visualizer.add_zone(DZ_Settings(
+        visualizer.add_zone(DZSettings(
             x1=5.0,
             r1=2.5,
             rfpp=7.0,
@@ -38,7 +38,7 @@ class RelaySettings:
         ))
 
         # Зона 3:
-        visualizer.add_zone(DZ_Settings(
+        visualizer.add_zone(DZSettings(
             x1=8.0,
             r1=4.0,
             rfpp=12.0,
@@ -52,7 +52,7 @@ class RelaySettings:
         ))
 
         # Зона 4:
-        visualizer.add_zone(DZ_Settings(
+        visualizer.add_zone(DZSettings(
             x1=6.0,
             r1=3.0,
             rfpp=9.0,
@@ -66,7 +66,7 @@ class RelaySettings:
         ))
 
         # Зона 5:
-        visualizer.add_zone(DZ_Settings(
+        visualizer.add_zone(DZSettings(
             x1=10.0,
             r1=5.0,
             rfpp=15.0,
@@ -81,7 +81,7 @@ class RelaySettings:
 
     @staticmethod
     def create_common_settings(visualizer):
-        visualizer.add_common_settings(Common_Settings(
+        visualizer.add_common_settings(CommonSettings(
             u_base=115000,
             i_base=600,
             i_secondary=5.0,

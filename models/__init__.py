@@ -2,7 +2,9 @@
 Модели данных для REL670
 """
 
+from models.common_settings import CommonSettings
+from models.selector_calculator import SelectorCalculator
 from models.selector_settings import SelectorSettings
-from models.zone_settings import DZ_Settings, Common_Settings
+from models.zone_settings import DZSettings
 
-__all__ = ['DZ_Settings', 'SelectorSettings', 'Common_Settings']
+__all__ = ['CommonSettings', 'SelectorSettings', 'SelectorCalculator', 'DZSettings']

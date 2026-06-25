@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from ui.constants import FAULT_TYPES
+from widgets.terminal_selector import TerminalSelector
 
 
 class TopPanel:
@@ -18,6 +19,7 @@ class TopPanel:
         self.frame = ttk.Frame(parent)
         self.fault_type_label = None
         self.fault_types = FAULT_TYPES
+        self.terminal_selector = None
         self._create_widgets()
 
     def pack(self, **kwargs):
@@ -53,18 +55,55 @@ class TopPanel:
         self.fault_type_label.pack(side=tk.LEFT)
         self.update_fault_type_label()
 
+        # Выбор терминала
+        terminal_frame = ttk.Frame(top_frame)
+        terminal_frame.pack(side=tk.LEFT, padx=(20, 0))
+
+        self.terminal_selector = TerminalSelector(
+            terminal_frame,
+            on_change=self._on_terminal_change
+        )
+        self.terminal_selector.pack()
+
         # Правая часть - дополнительные кнопки
         right_frame = ttk.Frame(top_frame)
         right_frame.pack(side=tk.RIGHT)
 
-        ttk.Button(right_frame, text="Все зоны", width=20, command=self.viz.enable_all_zones).pack(side=tk.LEFT, padx=2)
-        ttk.Button(right_frame, text="Убрать зоны", width=20, command=self.viz.disable_all_zones).pack(side=tk.LEFT,
-                                                                                                       padx=2)
-        ttk.Button(right_frame, text="💾 PNG", width=20, command=self.viz.save_as_png).pack(side=tk.LEFT, padx=2)
-        ttk.Button(right_frame, text="✕ Маркеры", width=20, command=self.viz.clear_all_markers).pack(side=tk.LEFT,
-                                                                                                     padx=2)
+        # Кнопки управления зонами
+        zone_btn_frame = ttk.Frame(right_frame)
+        zone_btn_frame.pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(zone_btn_frame, text="Все вкл", width=10,
+                   command=self.viz.enable_all_zones).pack(side=tk.LEFT, padx=1)
+        ttk.Button(zone_btn_frame, text="Все выкл", width=10,
+                   command=self.viz.disable_all_zones).pack(side=tk.LEFT, padx=1)
+
+        # Кнопки сохранения/загрузки
+        config_frame = ttk.Frame(right_frame)
+        config_frame.pack(side=tk.LEFT, padx=(10, 2))
+
+        ttk.Button(config_frame, text="💾 Сохранить", width=12,
+                   command=self.viz.save_configuration_dialog).pack(side=tk.LEFT, padx=1)
+        ttk.Button(config_frame, text="📂 Загрузить", width=12,
+                   command=self.viz.load_configuration_dialog).pack(side=tk.LEFT, padx=1)
+
+        # Кнопки экспорта
+        export_frame = ttk.Frame(right_frame)
+        export_frame.pack(side=tk.LEFT, padx=(10, 2))
+
+        ttk.Button(export_frame, text="💾 PNG", width=10,
+                   command=self.viz.save_as_png).pack(side=tk.LEFT, padx=1)
+        ttk.Button(export_frame, text="✕ Маркеры", width=10,
+                   command=self.viz.clear_all_markers).pack(side=tk.LEFT, padx=1)
+
+    def _on_terminal_change(self, terminal_code: str):
+        """Обработка изменения типа терминала"""
+        self.viz.set_terminal_type(terminal_code)
+        # Обновляем статус
+        self.viz._update_status()
 
     def update_fault_type_label(self):
+        """Обновление метки типа повреждения"""
         fault_type = self.viz.fault_type.get()
         for code, name in self.fault_types:
             if code == fault_type:

@@ -1,19 +1,30 @@
 """
-REL670 - Интерактивный визуализатор дистанционной защиты
-Основан на технической документации ABB REL670
+Главный файл запуска приложения REL670 Visualizer
 """
 
-import os
-import sys
-
-# Добавляем путь к проекту
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from ui.visualizer import REL670Visualizer
+from models.calculation_points import CalculationPointsSettings
+from models.swing_blocking import SwingBlockingSettings
 from ui.main_settings import RelaySettings
+from ui.visualizer import REL670Visualizer
+
+
+def main():
+    """Точка входа в приложение"""
+    app = REL670Visualizer("REL670 - Дистанционная защита")
+
+    # Создаем настройки
+    RelaySettings.create_common_settings(app)
+    RelaySettings.create_DZ_zones(app)
+
+    # Добавляем настройки блокировки от качаний
+    app.swing_settings = SwingBlockingSettings()
+
+    # Добавляем настройки расчетных точек
+    app.points_settings = CalculationPointsSettings()
+
+    # Запускаем приложение
+    app.show()
+
 
 if __name__ == "__main__":
-    visualizer = REL670Visualizer("REL670 - Дистанционная защита")
-    RelaySettings.create_common_settings(visualizer)
-    RelaySettings.create_DZ_zones(visualizer)
-    visualizer.show()
+    main()
