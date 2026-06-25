@@ -5,6 +5,7 @@
 
 import tkinter as tk
 from tkinter import ttk
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -46,5 +47,3 @@ class PlotArea:
         self.viz.canvas = FigureCanvasTkAgg(self.viz.figure, master=self.frame)
         self.viz.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self.viz.canvas.draw()
-
-        # Привязка событий происходит в visualizer.py

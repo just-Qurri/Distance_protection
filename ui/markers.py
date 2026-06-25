@@ -3,15 +3,12 @@
 Модуль для управления интерактивными маркерами на графике
 """
 
-import tkinter as tk
-import numpy as np
-
 
 class MarkerState:
     """Класс для хранения состояния маркеров"""
 
     def __init__(self):
-        self.axis_markers_r = []  # Только данные для восстановления
+        self.axis_markers_r = []
         self.axis_markers_x = []
         self.point_markers = []
         self.line_position_r = 0.0

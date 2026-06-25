@@ -73,7 +73,6 @@ class REL670Visualizer:
         """Добавление общих настроек"""
         common.type = "common"
         self.common_settings = common
-
         common_settings.set_common_settings(common)
 
     def calculate_optimal_bounds(self):

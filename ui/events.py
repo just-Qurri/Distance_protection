@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 Модуль для обработки событий мыши на графике
 """
 
-import tkinter as tk
 import numpy as np
 
 
