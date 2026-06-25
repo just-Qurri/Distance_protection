@@ -13,7 +13,6 @@ from ui.zone_tab import ZoneTab
 __all__ = [
     'REL670Visualizer',
     'TopPanel',
-    'PlotArea',
     'ZoneTab',
     'SelectorTab',
     'COLORS',

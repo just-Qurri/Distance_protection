@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Вкладка для настройки параметров зоны
 """
@@ -18,8 +19,10 @@ class ZoneTab:
         self.viz = visualizer
         self.colors = colors
         self.linestyles = linestyles
+        self._entry_widgets = []
+        self._current_entry = None
+        self._updating = False
 
-        # Определяем название вкладки
         if is_common:
             tab_text = "Common"
         else:
@@ -30,7 +33,6 @@ class ZoneTab:
 
         self.vars = {}
 
-        # Создаем UI в зависимости от типа
         if is_common:
             self._create_common_ui()
         else:
@@ -38,7 +40,6 @@ class ZoneTab:
 
     def _create_dz_ui(self):
         """Создание UI для зоны DZ"""
-        # Заголовок
         title_frame = ttk.Frame(self.tab)
         title_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -46,17 +47,15 @@ class ZoneTab:
                   font=('Segoe UI', 16, 'bold'), foreground='#9C27B0').pack(side=tk.LEFT)
 
         enabled_var = tk.BooleanVar(value=self.zone.enabled)
-        ttk.Checkbutton(title_frame, text="Показать",
-                        variable=enabled_var).pack(side=tk.RIGHT)
+        enabled_check = ttk.Checkbutton(title_frame, text="Показать", variable=enabled_var)
+        enabled_check.pack(side=tk.RIGHT)
+        self.vars["enabled"] = enabled_var
 
-        # Направленность
         direction_var = tk.StringVar(value=self.zone.direction_mode)
         color_var = tk.StringVar(value=self.zone.color)
         style_var = tk.StringVar(value=self.zone.linestyle)
 
-        # Параметры
-        self.vars = {
-            "enabled": enabled_var,
+        self.vars.update({
             "direction": direction_var,
             "color": color_var,
             "style": style_var,
@@ -66,24 +65,20 @@ class ZoneTab:
             "x0": tk.StringVar(value=f"{self.zone.x0:.2f}"),
             "r0": tk.StringVar(value=f"{self.zone.r0:.2f}"),
             "rfpe": tk.StringVar(value=f"{self.zone.rfpe:.2f}"),
-            "angle_quad2": tk.StringVar(value=f"{self.zone.angle_quad2:.1f}"),
-            "angle_quad4": tk.StringVar(value=f"{self.zone.angle_quad4:.1f}")
-        }
+        })
 
-        # Создаем фреймы
         self._create_direction_frame()
         self._create_phph_frame()
         self._create_phe_frame()
-        self._create_angles_frame()
         self._create_style_frame()
 
-        self._bind_traces()
+        self._bind_entry_events()
+        enabled_var.trace('w', lambda *args: self._on_enabled_toggle())
 
     def _create_common_ui(self):
         """Создание UI для Common Settings"""
-        obj = self.zone  # Это Common_Settings
+        obj = self.zone
 
-        # Заголовок
         title_frame = ttk.Frame(self.tab)
         title_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -91,11 +86,11 @@ class ZoneTab:
                   font=('Segoe UI', 16, 'bold'), foreground=obj.color).pack(side=tk.LEFT)
 
         enabled_var = tk.BooleanVar(value=obj.enabled)
-        ttk.Checkbutton(title_frame, text="Показать",
-                        variable=enabled_var).pack(side=tk.RIGHT)
+        enabled_check = ttk.Checkbutton(title_frame, text="Показать", variable=enabled_var)
+        enabled_check.pack(side=tk.RIGHT)
+        self.vars["enabled"] = enabled_var
 
-        self.vars = {
-            "enabled": enabled_var,
+        self.vars.update({
             "color": tk.StringVar(value=obj.color),
             "style": tk.StringVar(value=obj.linestyle),
             "u_base": tk.StringVar(value=f"{obj.u_base:.0f}"),
@@ -105,10 +100,11 @@ class ZoneTab:
             "angle_phs": tk.StringVar(value=f"{obj.angle_phs:.1f}"),
             "angle_quad2": tk.StringVar(value=f"{obj.angle_quad2:.1f}"),
             "angle_quad4": tk.StringVar(value=f"{obj.angle_quad4:.1f}")
-        }
+        })
 
         self._create_common_frames()
-        self._bind_traces()
+        self._bind_entry_events()
+        enabled_var.trace('w', lambda *args: self._on_enabled_toggle())
 
     def _create_common_frames(self):
         """Создание фреймов для Common Settings"""
@@ -118,39 +114,27 @@ class ZoneTab:
         grid = ttk.Frame(params_frame)
         grid.pack(fill=tk.X)
 
-        # U Base
-        ttk.Label(grid, text="U base (В):", font=('Segoe UI', 10)).grid(row=0, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["u_base"], width=12).grid(row=0, column=1, sticky=tk.W, padx=10)
+        entries = [
+            ("U base (В):", "u_base", 0),
+            ("I base (А):", "i_base", 1),
+            ("I secondary (А):", "i_secondary", 2),
+            ("U secondary (В):", "u_secondary", 3),
+            ("Angle PHS:", "angle_phs", 4),
+            ("Angle 2-й квадрант:", "angle_quad2", 5),
+            ("Angle 4-й квадрант:", "angle_quad4", 6),
+        ]
 
-        # I Base
-        ttk.Label(grid, text="I base (А):", font=('Segoe UI', 10)).grid(row=1, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["i_base"], width=12).grid(row=1, column=1, sticky=tk.W, padx=10)
+        for label, key, row in entries:
+            ttk.Label(grid, text=label, font=('Segoe UI', 10)).grid(
+                row=row, column=0, sticky=tk.W, pady=5
+            )
+            entry = FloatEntry(grid, textvariable=self.vars[key], width=12)
+            entry.grid(row=row, column=1, sticky=tk.W, padx=10)
+            self._entry_widgets.append(entry)
 
-        # I Secondary
-        ttk.Label(grid, text="I secondary (А):", font=('Segoe UI', 10)).grid(row=2, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["i_secondary"], width=12).grid(row=2, column=1, sticky=tk.W, padx=10)
-
-        # U Secondary
-        ttk.Label(grid, text="U secondary (В):", font=('Segoe UI', 10)).grid(row=3, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["u_secondary"], width=12).grid(row=3, column=1, sticky=tk.W, padx=10)
-
-        # Углы
-        ttk.Label(grid, text="Angle PHS:", font=('Segoe UI', 10)).grid(row=4, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["angle_phs"], width=12).grid(row=4, column=1, sticky=tk.W, padx=10)
-
-        ttk.Label(grid, text="Angle 2-й квадрант:", font=('Segoe UI', 10)).grid(row=5, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["angle_quad2"], width=12).grid(row=5, column=1, sticky=tk.W, padx=10)
-
-        ttk.Label(grid, text="Angle 4-й квадрант:", font=('Segoe UI', 10)).grid(row=6, column=0, sticky=tk.W, pady=5)
-        FloatEntry(grid, textvariable=self.vars["angle_quad4"], width=12).grid(row=6, column=1, sticky=tk.W, padx=10)
-
-        # Оформление
         self._create_style_frame()
 
-    # ========== ОБЩИЕ МЕТОДЫ ==========
-
     def _create_direction_frame(self):
-        """Фрейм для направленности"""
         dir_frame = ttk.LabelFrame(self.tab, text="Направленность", padding=5)
         dir_frame.pack(fill=tk.X, pady=5)
 
@@ -158,116 +142,218 @@ class ZoneTab:
                                  values=["forward", "reverse", "non-directional"],
                                  state="readonly")
         dir_combo.pack(fill=tk.X)
+        dir_combo.bind('<<ComboboxSelected>>', lambda e: self._apply_changes())
 
     def _create_phph_frame(self):
-        """Фрейм для параметров Ph-Ph"""
         phph_frame = ttk.LabelFrame(self.tab, text="Параметры Ph-Ph", padding=5)
         phph_frame.pack(fill=tk.X, pady=5)
 
         grid = ttk.Frame(phph_frame)
         grid.pack(fill=tk.X)
 
-        ttk.Label(grid, text="X₁ (Ом):", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["x1"], width=8).grid(row=0, column=1, sticky=tk.W, padx=5)
+        entries = [
+            ("X₁ (Ом):", "x1", 0, 0),
+            ("R₁ (Ом):", "r1", 0, 2),
+            ("RFPP (Ом):", "rfpp", 1, 0),
+        ]
 
-        ttk.Label(grid, text="R₁ (Ом):", font=('Segoe UI', 9)).grid(row=0, column=2, sticky=tk.W, pady=2, padx=(10, 0))
-        FloatEntry(grid, textvariable=self.vars["r1"], width=8).grid(row=0, column=3, sticky=tk.W, padx=5)
-
-        ttk.Label(grid, text="RFPP (Ом):", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["rfpp"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
+        for label, key, row, col in entries:
+            ttk.Label(grid, text=label, font=('Segoe UI', 9)).grid(
+                row=row, column=col, sticky=tk.W, pady=2
+            )
+            entry = FloatEntry(grid, textvariable=self.vars[key], width=8)
+            entry.grid(row=row, column=col + 1, sticky=tk.W, padx=5)
+            self._entry_widgets.append(entry)
 
     def _create_phe_frame(self):
-        """Фрейм для параметров Ph-E"""
         phe_frame = ttk.LabelFrame(self.tab, text="Параметры Ph-E", padding=5)
         phe_frame.pack(fill=tk.X, pady=5)
 
         grid = ttk.Frame(phe_frame)
         grid.pack(fill=tk.X)
 
-        ttk.Label(grid, text="X₀ (Ом):", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["x0"], width=8).grid(row=0, column=1, sticky=tk.W, padx=5)
+        entries = [
+            ("X₀ (Ом):", "x0", 0, 0),
+            ("R₀ (Ом):", "r0", 0, 2),
+            ("RFPE (Ом):", "rfpe", 1, 0),
+        ]
 
-        ttk.Label(grid, text="R₀ (Ом):", font=('Segoe UI', 9)).grid(row=0, column=2, sticky=tk.W, pady=2, padx=(10, 0))
-        FloatEntry(grid, textvariable=self.vars["r0"], width=8).grid(row=0, column=3, sticky=tk.W, padx=5)
-
-        ttk.Label(grid, text="RFPE (Ом):", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["rfpe"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
-
-    def _create_angles_frame(self):
-        """Фрейм для углов"""
-        angles_frame = ttk.LabelFrame(self.tab, text="Углы", padding=5)
-        angles_frame.pack(fill=tk.X, pady=5)
-
-        grid = ttk.Frame(angles_frame)
-        grid.pack(fill=tk.X)
-
-        ttk.Label(grid, text="Угол 2-й кв.:", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["angle_quad2"], width=8).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(grid, text="Угол 4-й кв.:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
-        FloatEntry(grid, textvariable=self.vars["angle_quad4"], width=8).grid(row=1, column=1, sticky=tk.W, padx=5)
+        for label, key, row, col in entries:
+            ttk.Label(grid, text=label, font=('Segoe UI', 9)).grid(
+                row=row, column=col, sticky=tk.W, pady=2
+            )
+            entry = FloatEntry(grid, textvariable=self.vars[key], width=8)
+            entry.grid(row=row, column=col + 1, sticky=tk.W, padx=5)
+            self._entry_widgets.append(entry)
 
     def _create_style_frame(self):
-        """Фрейм для оформления"""
         style_frame = ttk.LabelFrame(self.tab, text="Оформление", padding=5)
         style_frame.pack(fill=tk.X, pady=5)
 
         grid = ttk.Frame(style_frame)
         grid.pack(fill=tk.X)
 
-        ttk.Label(grid, text="Цвет:", font=('Segoe UI', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        ColorCombo(grid, textvariable=self.vars["color"], colors=self.colors, width=15).grid(
-            row=0, column=1, sticky=tk.W, padx=5
+        ttk.Label(grid, text="Цвет:", font=('Segoe UI', 9)).grid(
+            row=0, column=0, sticky=tk.W, pady=2
         )
+        color_combo = ColorCombo(grid, textvariable=self.vars["color"],
+                                 colors=self.colors, width=15)
+        color_combo.grid(row=0, column=1, sticky=tk.W, padx=5)
+        color_combo.bind('<<ComboboxSelected>>', lambda e: self._apply_changes())
 
-        ttk.Label(grid, text="Стиль:", font=('Segoe UI', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(grid, text="Стиль:", font=('Segoe UI', 9)).grid(
+            row=1, column=0, sticky=tk.W, pady=2
+        )
         style_combo = ttk.Combobox(grid, textvariable=self.vars["style"],
                                    values=[s[0] for s in self.linestyles],
                                    state="readonly", width=12)
         style_combo.grid(row=1, column=1, sticky=tk.W, padx=5)
+        style_combo.bind('<<ComboboxSelected>>', lambda e: self._apply_changes())
 
-    def _bind_traces(self):
-        """Привязка отслеживания изменений"""
+    def _bind_entry_events(self):
+        """Привязка событий для полей ввода"""
+        for entry in self._entry_widgets:
+            entry._zone_tab = self
 
-        def update_zone(*args):
+            # Основные события
+            entry.bind('<FocusIn>', self._on_focus_in)
+            entry.bind('<FocusOut>', self._on_focus_out)
+
+            # Для Enter используем прямой метод
+            entry.entry.bind('<Return>', self._on_enter_pressed)
+            entry.entry.bind('<KP_Enter>', self._on_enter_pressed)
+
+            # Escape для отмены
+            entry.entry.bind('<Escape>', self._cancel_changes)
+
+    def _on_focus_in(self, event):
+        """Запоминаем поле, в которое вошёл фокус"""
+        self._current_entry = event.widget
+
+    def _on_focus_out(self, event):
+        """Потеря фокуса - применяем изменения"""
+        if not self._updating:
+            self._apply_changes()
+
+    def _on_enter_pressed(self, event):
+        """Нажатие Enter - применяем изменения и переходим к следующему полю"""
+        if self._updating:
+            return "break"
+
+        self._updating = True
+
+        try:
+            # Применяем изменения
+            self._apply_changes()
+
+            # Находим текущий виджет
+            current_widget = event.widget
+
+            # Перемещаемся к следующему полю
             try:
-                obj = self.zone
+                # Пробуем найти следующий виджет в табе
+                next_widget = current_widget.tk_focusNext()
+                if next_widget and next_widget.winfo_exists():
+                    # Если это Entry внутри FloatEntry, фокусируем его
+                    if isinstance(next_widget, ttk.Entry):
+                        next_widget.focus_set()
+                    else:
+                        next_widget.focus_set()
+                else:
+                    self.tab.focus_set()
+            except Exception:
+                self.tab.focus_set()
 
-                # Общие параметры
-                if "enabled" in self.vars:
-                    obj.enabled = self.vars["enabled"].get()
-                if "color" in self.vars:
-                    obj.color = self.vars["color"].get()
-                if "style" in self.vars:
-                    obj.linestyle = self.vars["style"].get()
+            self._current_entry = None
 
-                # Для DZ зон
-                if not self.is_common:
-                    obj.direction_mode = self.vars["direction"].get()
-                    obj.x1 = float(self.vars["x1"].get().replace(',', '.'))
-                    obj.r1 = float(self.vars["r1"].get().replace(',', '.'))
-                    obj.rfpp = float(self.vars["rfpp"].get().replace(',', '.'))
-                    obj.x0 = float(self.vars["x0"].get().replace(',', '.'))
-                    obj.r0 = float(self.vars["r0"].get().replace(',', '.'))
-                    obj.rfpe = float(self.vars["rfpe"].get().replace(',', '.'))
+        finally:
+            self._updating = False
 
-                # Для Common Settings
-                if self.is_common:
-                    obj.u_base = float(self.vars["u_base"].get().replace(',', '.'))
-                    obj.i_base = float(self.vars["i_base"].get().replace(',', '.'))
-                    obj.i_secondary = float(self.vars["i_secondary"].get().replace(',', '.'))
-                    obj.u_secondary = float(self.vars["u_secondary"].get().replace(',', '.'))
-                    obj.angle_phs = float(self.vars["angle_phs"].get().replace(',', '.'))
-                    obj.angle_quad2 = float(self.vars["angle_quad2"].get().replace(',', '.'))
-                    obj.angle_quad4 = float(self.vars["angle_quad4"].get().replace(',', '.'))
+        return "break"
 
-                # Обновляем график
-                if self.viz.update_job:
-                    self.viz.root.after_cancel(self.viz.update_job)
-                self.viz.update_job = self.viz.root.after(100, self.viz.deferred_update)
+    def _apply_changes(self, event=None):
+        """Применение изменений после подтверждения (FocusOut или Enter)"""
+        if self._updating:
+            return
 
-            except ValueError:
-                pass
+        self._updating = True
 
-        for var in self.vars.values():
-            var.trace('w', update_zone)
+        try:
+            obj = self.zone
+
+            # Общие параметры
+            if "enabled" in self.vars:
+                obj.enabled = self.vars["enabled"].get()
+            if "color" in self.vars:
+                obj.color = self.vars["color"].get()
+            if "style" in self.vars:
+                obj.linestyle = self.vars["style"].get()
+
+            # Для DZ зон
+            if not self.is_common:
+                obj.direction_mode = self.vars["direction"].get()
+                obj.x1 = float(self.vars["x1"].get().replace(',', '.'))
+                obj.r1 = float(self.vars["r1"].get().replace(',', '.'))
+                obj.rfpp = float(self.vars["rfpp"].get().replace(',', '.'))
+                obj.x0 = float(self.vars["x0"].get().replace(',', '.'))
+                obj.r0 = float(self.vars["r0"].get().replace(',', '.'))
+                obj.rfpe = float(self.vars["rfpe"].get().replace(',', '.'))
+
+            # Для Common Settings
+            if self.is_common:
+                obj.u_base = float(self.vars["u_base"].get().replace(',', '.'))
+                obj.i_base = float(self.vars["i_base"].get().replace(',', '.'))
+                obj.i_secondary = float(self.vars["i_secondary"].get().replace(',', '.'))
+                obj.u_secondary = float(self.vars["u_secondary"].get().replace(',', '.'))
+                obj.angle_phs = float(self.vars["angle_phs"].get().replace(',', '.'))
+                obj.angle_quad2 = float(self.vars["angle_quad2"].get().replace(',', '.'))
+                obj.angle_quad4 = float(self.vars["angle_quad4"].get().replace(',', '.'))
+
+            # Обновляем график
+            self.viz.plot_characteristics(keep_limits=True)
+            self.viz._update_status()
+
+        except ValueError as e:
+            self.viz._show_notification(f"Ошибка: {e}")
+        finally:
+            self._updating = False
+
+    def _cancel_changes(self, event):
+        """Отмена изменений при нажатии Escape"""
+        obj = self.zone
+        if not self.is_common:
+            self.vars["x1"].set(f"{obj.x1:.2f}")
+            self.vars["r1"].set(f"{obj.r1:.2f}")
+            self.vars["rfpp"].set(f"{obj.rfpp:.2f}")
+            self.vars["x0"].set(f"{obj.x0:.2f}")
+            self.vars["r0"].set(f"{obj.r0:.2f}")
+            self.vars["rfpe"].set(f"{obj.rfpe:.2f}")
+        else:
+            self.vars["u_base"].set(f"{obj.u_base:.0f}")
+            self.vars["i_base"].set(f"{obj.i_base:.0f}")
+            self.vars["i_secondary"].set(f"{obj.i_secondary:.1f}")
+            self.vars["u_secondary"].set(f"{obj.u_secondary:.1f}")
+            self.vars["angle_phs"].set(f"{obj.angle_phs:.1f}")
+            self.vars["angle_quad2"].set(f"{obj.angle_quad2:.1f}")
+            self.vars["angle_quad4"].set(f"{obj.angle_quad4:.1f}")
+
+        self.viz._show_notification("Изменения отменены")
+
+        # Снимаем фокус
+        if self._current_entry:
+            try:
+                next_widget = self._current_entry.tk_focusNext()
+                if next_widget and next_widget.winfo_exists():
+                    next_widget.focus_set()
+                else:
+                    self.tab.focus_set()
+            except:
+                self.tab.focus_set()
+            self._current_entry = None
+
+    def _on_enabled_toggle(self):
+        """Обработка включения/отключения - сразу обновляем"""
+        obj = self.zone
+        obj.enabled = self.vars["enabled"].get()
+        self.viz.plot_characteristics(keep_limits=True)
+        self.viz._update_status()

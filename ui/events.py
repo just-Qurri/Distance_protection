@@ -9,23 +9,13 @@ class EventHandler:
     """Класс для обработки событий мыши"""
 
     def __init__(self, visualizer, marker_manager):
-        """
-        Инициализация обработчика событий
 
-        Args:
-            visualizer: Главный объект визуализатора
-            marker_manager: Менеджер маркеров
-        """
         self.viz = visualizer
         self.markers = marker_manager
-
-        # Для перетаскивания графика
         self.drag_start = None
         self.drag_start_xlim = None
         self.drag_start_ylim = None
         self.is_dragging = False
-
-        # Для захвата маркеров по радиусу
         self.captured_marker = None
         self.capture_radius = 50  # пикселей
 
@@ -41,11 +31,8 @@ class EventHandler:
             self.viz._show_notification(f"Точечный маркер: ({event.xdata:.2f}, {event.ydata:.2f})")
             return
 
-        # Проверяем, есть ли маркер в радиусе захвата
-        captured = self._capture_marker_at_position(event.x, event.y)
-
-        if captured:
-            # Если нашли маркер по радиусу, не начинаем перетаскивание графика
+        # Если нашли маркер по радиусу, не начинаем перетаскивание графика
+        if self._capture_marker_at_position(event.x, event.y):
             return
 
         # Иначе начинаем перетаскивание графика
@@ -59,61 +46,41 @@ class EventHandler:
     def _capture_marker_at_position(self, screen_x, screen_y):
         """
         Поиск маркера в радиусе от заданных экранных координат
-
-        Args:
-            screen_x, screen_y: Экранные координаты мыши
-
-        Returns:
-            bool: True если маркер найден и захвачен
         """
         # Получаем координаты мыши в системе данных
         data_x, data_y = self.viz.ax.transData.inverted().transform((screen_x, screen_y))
-
-        # Проверяем все маркеры
         best_distance = float('inf')
         best_marker = None
-        best_type = None
-        best_index = None
 
         # Проверяем маркеры на оси R
         for i, marker in enumerate(self.markers.axis_markers_r):
-            # Получаем экранные координаты линии маркера
             line_screen_x, _ = self.viz.ax.transData.transform((marker['x'], 0))
             distance = abs(screen_x - line_screen_x)
 
             if distance < best_distance and distance < self.capture_radius:
                 best_distance = distance
                 best_marker = ('r', i)
-                best_type = 'r'
-                best_index = i
 
         # Проверяем маркеры на оси X
         for i, marker in enumerate(self.markers.axis_markers_x):
-            # Получаем экранные координаты линии маркера
             _, line_screen_y = self.viz.ax.transData.transform((0, marker['y']))
             distance = abs(screen_y - line_screen_y)
 
             if distance < best_distance and distance < self.capture_radius:
                 best_distance = distance
                 best_marker = ('x', i)
-                best_type = 'x'
-                best_index = i
 
         # Проверяем точечные маркеры
         for i, marker in enumerate(self.markers.point_markers):
-            # Получаем экранные координаты точки
             point_screen_x, point_screen_y = self.viz.ax.transData.transform((marker['x'], marker['y']))
             distance = np.sqrt((screen_x - point_screen_x) ** 2 + (screen_y - point_screen_y) ** 2)
 
             if distance < best_distance and distance < self.capture_radius:
                 best_distance = distance
                 best_marker = ('point', i)
-                best_type = 'point'
-                best_index = i
 
         # Если нашли маркер, захватываем его
         if best_marker:
-            print(f"Captured marker at distance {best_distance:.1f}px")
             marker_type, index = best_marker
 
             if marker_type == 'r':
@@ -133,7 +100,6 @@ class EventHandler:
 
     def on_mouse_release(self, event):
         """Обработка отпускания кнопки мыши"""
-        # Сбрасываем захваченный маркер
         self.captured_marker = None
 
         # Сначала проверяем, не отпустили ли мы маркер
@@ -202,15 +168,8 @@ class EventHandler:
         self.viz._update_zoom_level()
 
     def on_pick_event(self, event):
-        """Обработка выбора объекта для перетаскивания (резервный метод)"""
-        if not hasattr(event, 'artist'):
+        if not hasattr(event, 'artist') or self.is_dragging:
             return
-
-        # Если мы уже перетаскиваем график, игнорируем pick
-        if self.is_dragging:
-            return
-
-        # Передаем событие менеджеру маркеров
         self.markers.handle_pick_event(event)
 
     def show_context_menu(self, event):

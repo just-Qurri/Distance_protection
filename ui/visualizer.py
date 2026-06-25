@@ -41,27 +41,21 @@ class REL670Visualizer:
         self.status_bar = None
         self.zoom_level = None
         self.fault_type = None
-
-        # Менеджеры
         self.markers = None
         self.events = None
-
-        # Для отложенного обновления
         self.update_job = None
-
-        # Компоненты UI
         self.top_panel = None
         self.zone_tabs = []
         self.selector_tab = None
-
-        # Контекстное меню
         self.context_menu = None
         self.context_menu_marker = None
         self.context_x = None
         self.context_y = None
 
+        # Для оптимизации обновлений
+        self._skip_redraw = False
+
     def add_zone(self, zone: DZ_Settings):
-        """Добавление зоны дистанционной защиты"""
         zone.zone_id = len(self.zones) + 1
         zone.type = "zone"
         if zone.zone_id <= len(COLORS):
@@ -70,21 +64,17 @@ class REL670Visualizer:
         self.zones.append(zone)
 
     def add_common_settings(self, common):
-        """Добавление общих настроек"""
         common.type = "common"
         self.common_settings = common
         common_settings.set_common_settings(common)
 
     def calculate_optimal_bounds(self):
-        """Расчет оптимальных границ графика"""
         all_min_r = float('inf')
         all_max_r = float('-inf')
         all_min_x = float('inf')
         all_max_x = float('-inf')
-
         fault_type = self.fault_type.get() if self.fault_type else "ph-ph"
 
-        # DZ зоны
         for zone in self.zones:
             if zone.enabled:
                 min_r, max_r, min_x, max_x = zone.get_zone_bounds(fault_type)
@@ -93,7 +83,6 @@ class REL670Visualizer:
                 all_min_x = min(all_min_x, min_x)
                 all_max_x = max(all_max_x, max_x)
 
-        # Фазовый селектор
         if self.selector and self.selector.enabled:
             points = self.selector.get_polygon_points(self.fault_type.get())
             for r, x in points:
@@ -107,28 +96,22 @@ class REL670Visualizer:
 
         r_range = all_max_r - all_min_r
         x_range = all_max_x - all_min_x
-
         r_margin = max(r_range * 0.2, 1.0)
         x_margin = max(x_range * 0.2, 1.0)
 
         xlim = (all_min_r - r_margin, all_max_r + r_margin)
         ylim = (all_min_x - x_margin, all_max_x + x_margin)
 
-        # Квадратное поле
         x_range = xlim[1] - xlim[0]
         y_range = ylim[1] - ylim[0]
         max_range = max(x_range, y_range)
-
         x_center = (xlim[0] + xlim[1]) / 2
         y_center = (ylim[0] + ylim[1]) / 2
 
-        xlim = (x_center - max_range / 2, x_center + max_range / 2)
-        ylim = (y_center - max_range / 2, y_center + max_range / 2)
-
-        return xlim, ylim
+        return (x_center - max_range / 2, x_center + max_range / 2), (y_center - max_range / 2,
+                                                                      y_center + max_range / 2)
 
     def create_window(self):
-        """Создание главного окна"""
         self.root = tk.Tk()
         self.root.title(self.title)
         self.root.state('zoomed')
@@ -162,7 +145,6 @@ class REL670Visualizer:
         self._create_context_menu()
 
     def _create_plot_area(self, parent):
-        """Создание области графика"""
         self.figure = plt.Figure(figsize=(8, 8), dpi=100,
                                  facecolor='white', edgecolor='#dddddd')
         self.ax = self.figure.add_subplot(111)
@@ -171,17 +153,14 @@ class REL670Visualizer:
         self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Создаем менеджеры
         self.markers = MarkerManager(self.ax, self.canvas, self)
         self.events = EventHandler(self, self.markers)
 
-        # Привязка событий
         self.canvas.mpl_connect('scroll_event', self.events.on_scroll)
         self.canvas.mpl_connect('button_press_event', self.events.on_mouse_press)
         self.canvas.mpl_connect('button_release_event', self.events.on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self.events.on_mouse_motion)
         self.canvas.mpl_connect('pick_event', self.events.on_pick_event)
-
         self.canvas.get_tk_widget().bind('<Button-3>', self.events.show_context_menu)
         self.canvas.get_tk_widget().configure(cursor="arrow")
 
@@ -189,36 +168,28 @@ class REL670Visualizer:
         self.canvas.draw()
 
     def _create_context_menu(self):
-        """Создание контекстного меню"""
         self.context_menu = tk.Menu(self.root, tearoff=0)
-        self.context_menu.add_command(label="➕ Добавить маркер на ось R",
-                                      command=self._add_marker_r_from_menu)
-        self.context_menu.add_command(label="➕ Добавить маркер на ось X",
-                                      command=self._add_marker_x_from_menu)
+        self.context_menu.add_command(label="➕ Добавить маркер на ось R", command=self._add_marker_r_from_menu)
+        self.context_menu.add_command(label="➕ Добавить маркер на ось X", command=self._add_marker_x_from_menu)
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="🗑️ Удалить выбранный маркер",
-                                      command=self._delete_selected_marker)
-        self.context_menu.add_command(label="🗑️ Удалить все маркеры",
-                                      command=self.clear_all_markers)
+        self.context_menu.add_command(label="🗑️ Удалить выбранный маркер", command=self._delete_selected_marker)
+        self.context_menu.add_command(label="🗑️ Удалить все маркеры", command=self.clear_all_markers)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="❌ Отмена")
 
     def _add_marker_r_from_menu(self):
-        """Добавление маркера на ось R"""
         if self.context_x is not None and self.markers:
             self.markers.add_axis_marker_r(self.context_x)
             self.canvas.draw_idle()
             self._show_notification(f"Маркер на оси R: {self.context_x:.2f}")
 
     def _add_marker_x_from_menu(self):
-        """Добавление маркера на ось X"""
         if self.context_y is not None and self.markers:
             self.markers.add_axis_marker_x(self.context_y)
             self.canvas.draw_idle()
             self._show_notification(f"Маркер на оси X: {self.context_y:.2f}")
 
     def _delete_selected_marker(self):
-        """Удаление выбранного маркера"""
         if self.context_menu_marker and self.markers:
             marker_type, index = self.context_menu_marker
             if self.markers.delete_marker(marker_type, index):
@@ -232,24 +203,19 @@ class REL670Visualizer:
             self._show_notification("Маркер не выбран")
 
     def clear_all_markers(self):
-        """Очистка всех маркеров"""
         if self.markers:
             self.markers.clear_all_markers()
             self.canvas.draw_idle()
             self._update_status()
             self._show_notification("Все маркеры удалены")
-        else:
-            self._show_notification("Нет маркеров для удаления")
 
     def reset_measurement_lines(self):
-        """Сброс измерительных линий"""
         if self.markers:
             self.markers.reset_measurement_lines()
             self.canvas.draw_idle()
             self._show_notification("Основные линии сброшены в (0, 0)")
 
     def _configure_styles(self):
-        """Настройка стилей"""
         style = ttk.Style()
         style.theme_use('clam')
         bg_color = '#f8f9fa'
@@ -267,26 +233,21 @@ class REL670Visualizer:
         self.root.configure(bg=bg_color)
 
     def _create_control_panel(self, parent):
-        """Создание панели управления"""
         notebook = ttk.Notebook(parent)
         notebook.pack(fill=tk.BOTH, expand=True)
 
-        # Вкладки для зон
         for zone in self.zones:
             tab = ZoneTab(notebook, zone, self, COLORS, LINESTYLES)
             self.zone_tabs.append(tab)
 
-        # Вкладка для Common Settings (если есть)
         if self.common_settings:
             tab = ZoneTab(notebook, self.common_settings, self, COLORS, LINESTYLES, is_common=True)
             self.zone_tabs.append(tab)
 
-        # Вкладка для фазового селектора
         self.selector = SelectorSettings()
         self.selector_tab = SelectorTab(notebook, self.selector, self, COLORS, LINESTYLES)
 
     def _create_status_bar(self, parent):
-        """Создание строки статуса"""
         self.status_bar = ttk.Frame(parent)
         self.status_bar.pack(fill=tk.X, pady=(10, 0))
 
@@ -294,15 +255,11 @@ class REL670Visualizer:
         status_left.pack(side=tk.LEFT)
 
         instructions = [
-            "🖱️ ЛКМ - перетаскивание",
-            "|",
-            "🖱️ Колесо - масштаб",
-            "|",
-            "Ctrl+ЛКМ - точечный маркер",
-            "|",
-            "ПКМ - меню маркеров",
-            "|",
-            "Радиус захвата: 50px"
+            "🖱️ ЛКМ - перетаскивание", "|",
+            "🖱️ Колесо - масштаб", "|",
+            "Ctrl+ЛКМ - точечный маркер", "|",
+            "ПКМ - меню маркеров", "|",
+            "Enter - подтвердить параметры"
         ]
 
         for instr in instructions:
@@ -319,8 +276,6 @@ class REL670Visualizer:
         self.status_label = ttk.Label(status_right, text="Загрузка...",
                                       font=('Segoe UI', 9), foreground='#666666')
         self.status_label.pack(side=tk.RIGHT)
-
-    # ============= МЕТОДЫ УПРАВЛЕНИЯ =============
 
     def zoom_in(self):
         if self.ax is None:
@@ -368,27 +323,20 @@ class REL670Visualizer:
         xlim, ylim = self.calculate_optimal_bounds()
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
-
         if self.markers:
             self.markers.update_marker_positions()
-
         self.canvas.draw_idle()
         self._update_zoom_level()
         self._show_notification("Масштаб оптимизирован")
 
     def on_fault_type_change(self):
+        """Обновление при изменении типа повреждения - полная перерисовка"""
         self.top_panel.update_fault_type_label()
         self.plot_characteristics(keep_limits=False)
         self._update_status()
 
-    def deferred_update(self):
-        self.plot_characteristics(keep_limits=True)
-        self.update_job = None
-
     def plot_characteristics(self, keep_limits=True):
-        """Построение характеристик с отстройкой от нагрузки"""
-
-        # Сохраняем состояние маркеров
+        """Полная перерисовка характеристик"""
         if hasattr(self, 'markers') and self.markers:
             self.markers.save_state()
             line_pos_r = self.markers.line_position_r
@@ -397,10 +345,8 @@ class REL670Visualizer:
             line_pos_r = 0.0
             line_pos_x = 0.0
 
-        # Очищаем оси
         self.ax.clear()
 
-        # Принудительно удаляем все патчи и линии
         for patch in self.ax.patches:
             patch.remove()
         for line in self.ax.lines:
@@ -408,86 +354,61 @@ class REL670Visualizer:
         for collection in self.ax.collections:
             collection.remove()
 
-        # Обновляем холст для гарантии
         self.ax.figure.canvas.draw_idle()
 
         fault_type = self.fault_type.get()
         fault_type_name = dict(self.FAULT_TYPES).get(fault_type, "")
 
-        # ========================================
-        # СЛОЙ 1: Зона нагрузки (только если селектор включен)
-        # ========================================
+        # Зона нагрузки
         if (hasattr(self, 'selector') and
                 self.selector.load_enabled and
                 self.selector.enabled):
-
-            # Заливка зоны нагрузки
             load_polygons = self.selector.get_load_encroachment_polygons(self.fault_type.get())
             for i, poly_points in enumerate(load_polygons):
                 if len(poly_points) >= 3:
                     load_array = np.array(poly_points)
-                    label = "Зона нагрузки" if i == 0 else "_nolegend_"
                     load_patch = MPLPolygon(load_array, closed=True,
                                             facecolor='#FFEB3B',
                                             alpha=0.2,
-                                            label=label)
+                                            label="Зона нагрузки" if i == 0 else "_nolegend_")
                     self.ax.add_patch(load_patch)
 
             load_lines = self.selector.get_load_encroachment_lines(self.fault_type.get())
             for x1, y1, x2, y2 in load_lines:
                 self.ax.plot([x1, x2], [y1, y2],
-                             color='#F57F17',
-                             linestyle='--',
-                             linewidth=2.0,
-                             alpha=0.8)
+                             color='#F57F17', linestyle='--',
+                             linewidth=2.0, alpha=0.8)
 
-        # ========================================
-        # СЛОЙ 2: Фазовый селектор (полный)
-        # ========================================
+        # Фазовый селектор
         if hasattr(self, 'selector') and self.selector.enabled:
-            from matplotlib.patches import Polygon
-
             selector_points = self.selector.get_polygon_points(self.fault_type.get())
             if len(selector_points) >= 3:
                 points_array = np.array(selector_points)
-                poly = Polygon(points_array, closed=True, fill=None,
-                               edgecolor=self.selector.color,
-                               linestyle=self.selector.linestyle,
-                               linewidth=3.0, alpha=self.selector.opacity,
-                               label="Фазовый селектор")
+                poly = MPLPolygon(points_array, closed=True, fill=None,
+                                  edgecolor=self.selector.color,
+                                  linestyle=self.selector.linestyle,
+                                  linewidth=3.0, alpha=self.selector.opacity,
+                                  label="Фазовый селектор")
                 self.ax.add_patch(poly)
 
-        # ========================================
-        # СЛОЙ 2.5: Обрезанный селектор
-        # ========================================
+        # Обрезанный селектор
         if (hasattr(self, 'selector') and
                 self.selector.load_enabled and
                 self.selector.enabled):
-            from matplotlib.patches import Polygon
-
-            # Получаем обрезанные точки
             clipped_points = self.selector.get_clipped_selector_points(fault_type)
-
             if clipped_points and len(clipped_points) >= 3:
                 points_array = np.array(clipped_points)
-
-                # Заливка обрезанного селектора (полупрозрачная)
-                poly_fill = Polygon(points_array, closed=True,
-                                    facecolor=self.selector.color,
-                                    alpha=0.15,
-                                    label="_nolegend_")
+                poly_fill = MPLPolygon(points_array, closed=True,
+                                       facecolor=self.selector.color,
+                                       alpha=0.15, label="_nolegend_")
                 self.ax.add_patch(poly_fill)
 
-                # Контур обрезанного селектора (жирная линия)
-                poly_edge = Polygon(points_array, closed=True, fill=None,
-                                    edgecolor='#FF6F00',
-                                    linestyle='-',
-                                    linewidth=4.0,
-                                    alpha=1.0,
-                                    label="Селектор (обрезанный)")
+                poly_edge = MPLPolygon(points_array, closed=True, fill=None,
+                                       edgecolor='#FF6F00', linestyle='-',
+                                       linewidth=4.0, alpha=1.0,
+                                       label="Селектор (обрезанный)")
                 self.ax.add_patch(poly_edge)
 
-                # Добавляем точки пересечения
                 intersection_points = self.selector.get_intersection_points(fault_type)
                 if intersection_points:
                     x_coords = [p[0] for p in intersection_points]
@@ -497,11 +418,9 @@ class REL670Visualizer:
                                     marker='o', edgecolors='white', linewidth=2,
                                     label="Точки пересечения")
 
-                # Добавляем подписи к точкам пересечения
                 for i, (r, x) in enumerate(intersection_points):
                     self.ax.annotate(f'({r:.1f}, {x:.1f})',
-                                     xy=(r, x),
-                                     xytext=(10, 10),
+                                     xy=(r, x), xytext=(10, 10),
                                      textcoords='offset points',
                                      fontsize=8,
                                      bbox=dict(boxstyle='round,pad=0.3',
@@ -509,62 +428,49 @@ class REL670Visualizer:
                                                edgecolor='red',
                                                alpha=0.8))
 
-        # ========================================
-        # СЛОЙ 3: DZ ЗОНЫ
-        # ========================================
+        # DZ зоны
         if fault_type != "selector":
             for zone in self.zones:
                 if not zone.enabled:
                     continue
                 points = zone.get_polygon_points(fault_type)
                 if points:
-                    from matplotlib.patches import Polygon
                     points_array = np.array(points)
                     direction_symbol = {"forward": "↑", "reverse": "↓",
                                         "non-directional": "↕"}.get(zone.direction_mode, "")
-
-                    poly = Polygon(points_array, closed=True, fill=None,
-                                   edgecolor=zone.color, linestyle=zone.linestyle,
-                                   linewidth=2.5, alpha=zone.opacity,
-                                   label=f"Зона {zone.zone_id} {direction_symbol}")
+                    poly = MPLPolygon(points_array, closed=True, fill=None,
+                                      edgecolor=zone.color, linestyle=zone.linestyle,
+                                      linewidth=2.5, alpha=zone.opacity,
+                                      label=f"Зона {zone.zone_id} {direction_symbol}")
                     self.ax.add_patch(poly)
 
-        # Создаем новый менеджер маркеров
         self.markers = MarkerManager(self.ax, self.canvas, self)
-
-        # Восстанавливаем позиции основных линий
         self.markers.line_position_r = line_pos_r
         self.markers.line_position_x = line_pos_x
         self.markers.vertical_line.set_xdata([line_pos_r, line_pos_r])
         self.markers.horizontal_line.set_ydata([line_pos_x, line_pos_x])
         self.markers._update_measurement_text()
 
-        # Настройка графика
         self.ax.set_xlabel('R (Ом) - Активное сопротивление', fontsize=11, fontweight='bold')
         self.ax.set_ylabel('X (Ом) - Реактивное сопротивление', fontsize=11, fontweight='bold')
         self.ax.set_title(f"{self.title} | {fault_type_name}", fontsize=14, fontweight='bold', pad=15, color='#2196F3')
 
-        # Сетка
         self.ax.grid(True, alpha=0.7, linestyle='-', color='#AAAAAA', linewidth=0.8)
         self.ax.grid(True, which='minor', alpha=0.3, linestyle=':', color='#666666', linewidth=0.5)
         self.ax.minorticks_on()
 
-        # Оси
         self.ax.axhline(y=0, color='#333333', linewidth=2, alpha=0.9)
         self.ax.axvline(x=0, color='#333333', linewidth=2, alpha=0.9)
         self.ax.set_facecolor('#fafafa')
         self.ax.set_aspect('equal', adjustable='box')
 
-        # Масштаб
         xlim, ylim = self.calculate_optimal_bounds()
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
 
-        # Обновляем позиции маркеров
         if self.markers:
             self.markers.update_marker_positions()
 
-        # Легенда
         handles, labels = self.ax.get_legend_handles_labels()
         if handles:
             self.ax.legend(loc='upper right', fontsize=9, framealpha=0.9,
@@ -581,8 +487,7 @@ class REL670Visualizer:
             self.zoom_level.set(f"{zoom_x * 100:.0f}%")
 
     def _update_status(self):
-        """Обновление строки статуса"""
-        if not hasattr(self, 'status_bar') or not hasattr(self, 'status_label'):
+        if not hasattr(self, 'status_label'):
             return
 
         visible_zones = sum(1 for z in self.zones if z.enabled)
@@ -598,29 +503,53 @@ class REL670Visualizer:
         else:
             stats = {'point': 0, 'r': 0, 'x': 0}
 
-        info_text = (f"Элементов: {total_visible}/{total_items}  |  "
-                     f"Маркеры: ●{stats['point']}  |  "
-                     f"R↓{stats['r']}  |  "
-                     f"X→{stats['x']}  |  "
-                     f"Тип: {fault_type_name}")
-
-        self.status_label.config(text=info_text)
+        self.status_label.config(
+            text=f"Элементов: {total_visible}/{total_items}  |  "
+                 f"Маркеры: ●{stats['point']}  |  "
+                 f"R↓{stats['r']}  |  "
+                 f"X→{stats['x']}  |  "
+                 f"Тип: {fault_type_name}"
+        )
 
     def enable_all_zones(self):
+        """Включить все зоны и обновить UI"""
         for zone in self.zones:
             zone.enabled = True
         if self.selector:
             self.selector.enabled = True
+
+        # Обновляем галочки во всех вкладках зон
+        for tab in self.zone_tabs:
+            if hasattr(tab, 'vars') and 'enabled' in tab.vars:
+                tab.vars['enabled'].set(True)
+
+        # Обновляем галочку в селекторе
+        if self.selector_tab and hasattr(self.selector_tab, 'vars') and 'enabled' in self.selector_tab.vars:
+            self.selector_tab.vars['enabled'].set(True)
+
         self.plot_characteristics(keep_limits=False)
         self._update_status()
+        self._show_notification("Все зоны включены")
 
     def disable_all_zones(self):
+        """Выключить все зоны и обновить UI"""
         for zone in self.zones:
             zone.enabled = False
         if self.selector:
             self.selector.enabled = False
+
+        # Обновляем галочки во всех вкладках зон
+        for tab in self.zone_tabs:
+            if hasattr(tab, 'vars') and 'enabled' in tab.vars:
+                tab.vars['enabled'].set(False)
+
+        # Обновляем галочку в селекторе
+        if self.selector_tab and hasattr(self.selector_tab, 'vars') and 'enabled' in self.selector_tab.vars:
+            self.selector_tab.vars['enabled'].set(False)
+
         self.plot_characteristics(keep_limits=False)
         self._update_status()
+        self._show_notification("Все зоны выключены")
 
     def save_as_png(self):
         from tkinter import filedialog
@@ -647,7 +576,6 @@ class REL670Visualizer:
         self.root.after(2000, notification.destroy)
 
     def show(self):
-        """Запуск приложения"""
         if self.root is None:
             self.create_window()
             self.plot_characteristics(keep_limits=False)
