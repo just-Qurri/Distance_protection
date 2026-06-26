@@ -37,7 +37,7 @@ class DZSettings:
     enabled: bool
     color: str
     linestyle: str = '-'  # всегда будет рисовать границы сплошной линией
-    opacity: float = 0.1  # прозрачность линий границ полигональных характеристик зон
+    opacity: float = 0.9  # прозрачность линий границ полигональных характеристик зон
 
     def __post_init__(self):
         valid_modes = ["forward", "reverse", "non-directional"]

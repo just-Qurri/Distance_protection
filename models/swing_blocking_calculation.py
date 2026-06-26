@@ -26,18 +26,18 @@ class SwingCalculator:
     def get_zin_polygon_points(self) -> List[Tuple[float, float]]:
         """Получить точки полигона ZIN (внутренняя зона)"""
         return self._build_swing_polygon(
-            self.settings.x1_zin,
-            self.settings.rfpp_zin,
-            self.settings.rfpe_zin,
+            self.settings.x1_in_fw,
+            self.settings.r1_f_in_rv,
+            self.settings.x1_in_rv,
             "ZIN"
         )
 
     def get_zout_polygon_points(self) -> List[Tuple[float, float]]:
         """Получить точки полигона ZOUT (внешняя зона)"""
         return self._build_swing_polygon(
-            self.settings.x1_zout,
-            self.settings.rfpp_zout,
-            self.settings.rfpe_zout,
+            self.settings.x1_in_rv,
+            self.settings.rld_out_rv,
+            self.settings.rld_out_rv,
             "ZOUT"
         )
 
@@ -80,9 +80,9 @@ class SwingCalculator:
             return []
 
         return self._get_load_polygons_general(
-            self.settings.rld_forward_zin,
-            self.settings.rld_reverse_zin,
-            self.settings.arg_load_zin
+            self.settings.rld_out_fw,
+            self.settings.r1_li_n,
+            self.settings.arg_ld
         )
 
     def get_load_polygons_zout(self) -> List[List[Tuple[float, float]]]:
@@ -91,9 +91,9 @@ class SwingCalculator:
             return []
 
         return self._get_load_polygons_general(
-            self.settings.rld_forward_zout,
-            self.settings.rld_reverse_zout,
-            self.settings.arg_load_zout
+            self.settings.rld_out_rv,
+            self.settings.rld_out_rv,
+            self.settings.arg_ld
         )
 
     def _get_load_polygons_general(

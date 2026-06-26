@@ -8,27 +8,26 @@ from dataclasses import dataclass
 @dataclass
 class SwingBlockingSettings:
     """
-    Настройки блокировки от качаний
+    Уставки блокировки от качаний
     """
     # Внутренняя зона качаний (ZIN)
-    x1_zin: float = 37.0
-    rfpp_zin: float = 164.0
-    rfpe_zin: float = 135.0
+    x1_in_fw: float = 37.0
+    r1_li_n: float = 37.0
+    r1_f_in_fw: float = 37.0
+    x1_in_rv: float = 37.0
+    r1_f_in_rv: float = 37.0
 
     # Внешняя зона качаний (ZOUT)
-    x1_zout: float = 55.0
-    rfpp_zout: float = 200.0
-    rfpe_zout: float = 180.0
+    rld_out_fw: float = 55.0
+    rld_out_rv: float = 200.0
 
-    # Отстройка от нагрузки для ZIN
-    rld_forward_zin: float = 96.0
-    rld_reverse_zin: float = 96.0
-    arg_load_zin: float = 35.0
+    # Параметры нагрузки
+    operation_ld_ch: bool = False
+    arg_ld: float = 25.0
 
-    # Отстройка от нагрузки для ZOUT
-    rld_forward_zout: float = 80.0
-    rld_reverse_zout: float = 80.0
-    arg_load_zout: float = 30.0
+    # Коэффициенты для определения границ
+    k_Ld_r_fw: float = 0.8
+    k_ld_r_rv: float = 0.75
 
     # Общие параметры
     load_enabled: bool = True

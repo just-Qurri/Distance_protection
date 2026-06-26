@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import List
 
-from models.swing_blocking import SwingBlockingSettings, SwingCalculator
+from models.swing_blocking_calculation import SwingBlockingSettings, SwingCalculator
 from models.terminal_types import TERMINAL_TYPES
 from ui.base_tab import BaseTab
 from ui.constants import DEFAULT_SWING_VALUES
@@ -44,20 +44,20 @@ class SwingTab(BaseTab):
             "show_zout": tk.BooleanVar(value=obj.show_zout),
 
             # ZIN параметры
-            "x1_zin": tk.StringVar(value=f"{obj.x1_zin:.2f}"),
-            "rfpp_zin": tk.StringVar(value=f"{obj.rfpp_zin:.2f}"),
-            "rfpe_zin": tk.StringVar(value=f"{obj.rfpe_zin:.2f}"),
-            "rld_forward_zin": tk.StringVar(value=f"{obj.rld_forward_zin:.2f}"),
-            "rld_reverse_zin": tk.StringVar(value=f"{obj.rld_reverse_zin:.2f}"),
-            "arg_load_zin": tk.StringVar(value=f"{obj.arg_load_zin:.2f}"),
+            "x1_in_fw": tk.StringVar(value=f"{obj.x1_in_fw:.2f}"),
+            "r1_f_in_rv": tk.StringVar(value=f"{obj.r1_f_in_rv:.2f}"),
+            "x1_in_rv": tk.StringVar(value=f"{obj.x1_in_rv:.2f}"),
+            "rld_out_fw": tk.StringVar(value=f"{obj.rld_out_fw:.2f}"),
+            "r1_li_n": tk.StringVar(value=f"{obj.r1_li_n:.2f}"),
+            "arg_ld": tk.StringVar(value=f"{obj.arg_ld:.2f}"),
 
             # ZOUT параметры
-            "x1_zout": tk.StringVar(value=f"{obj.x1_zout:.2f}"),
-            "rfpp_zout": tk.StringVar(value=f"{obj.rfpp_zout:.2f}"),
-            "rfpe_zout": tk.StringVar(value=f"{obj.rfpe_zout:.2f}"),
-            "rld_forward_zout": tk.StringVar(value=f"{obj.rld_forward_zout:.2f}"),
-            "rld_reverse_zout": tk.StringVar(value=f"{obj.rld_reverse_zout:.2f}"),
-            "arg_load_zout": tk.StringVar(value=f"{obj.arg_load_zout:.2f}"),
+            "x1_in_rv": tk.StringVar(value=f"{obj.x1_in_rv:.2f}"),
+            "rld_out_rv": tk.StringVar(value=f"{obj.rld_out_rv:.2f}"),
+            "rld_out_rv": tk.StringVar(value=f"{obj.rld_out_rv:.2f}"),
+            "rld_out_rv": tk.StringVar(value=f"{obj.rld_out_rv:.2f}"),
+            "rld_out_rv": tk.StringVar(value=f"{obj.rld_out_rv:.2f}"),
+            "arg_ld": tk.StringVar(value=f"{obj.arg_ld:.2f}"),
 
             # Стили
             "color_zin": tk.StringVar(value=obj.color_zin),
@@ -116,14 +116,14 @@ class SwingTab(BaseTab):
         row += 1
 
         entries = [
-            ("X₁ (Ом/фаза):", "x1_zin", row, 0),
-            ("RFPP (Ом/петля):", "rfpp_zin", row, 2),
+            ("X₁ (Ом/фаза):", "x1_in_fw", row, 0),
+            ("RFPP (Ом/петля):", "r1_f_in_rv", row, 2),
         ]
         self._create_entries(frame, entries)
         row += 1
 
         entries2 = [
-            ("RFPE (Ом/петля):", "rfpe_zin", row, 0),
+            ("RFPE (Ом/петля):", "x1_in_rv", row, 0),
         ]
         self._create_entries(frame, entries2)
         row += 1
@@ -136,14 +136,14 @@ class SwingTab(BaseTab):
         row += 1
 
         load_entries = [
-            ("RLdFw (Ом) - вперед:", "rld_forward_zin", row, 0),
-            ("RLdRv (Ом) - назад:", "rld_reverse_zin", row, 2),
+            ("RLdFw (Ом) - вперед:", "rld_out_fw", row, 0),
+            ("RLdRv (Ом) - назад:", "r1_li_n", row, 2),
         ]
         self._create_entries(frame, load_entries)
         row += 1
 
         load_entries2 = [
-            ("ArgLd (градусы):", "arg_load_zin", row, 0),
+            ("ArgLd (градусы):", "arg_ld", row, 0),
         ]
         self._create_entries(frame, load_entries2)
 
@@ -161,14 +161,14 @@ class SwingTab(BaseTab):
         row += 1
 
         entries = [
-            ("X₁ (Ом/фаза):", "x1_zout", row, 0),
-            ("RFPP (Ом/петля):", "rfpp_zout", row, 2),
+            ("X₁ (Ом/фаза):", "x1_in_rv", row, 0),
+            ("RFPP (Ом/петля):", "rld_out_rv", row, 2),
         ]
         self._create_entries(frame, entries)
         row += 1
 
         entries2 = [
-            ("RFPE (Ом/петля):", "rfpe_zout", row, 0),
+            ("RFPE (Ом/петля):", "rld_out_rv", row, 0),
         ]
         self._create_entries(frame, entries2)
         row += 1
@@ -181,14 +181,14 @@ class SwingTab(BaseTab):
         row += 1
 
         load_entries = [
-            ("RLdFw (Ом) - вперед:", "rld_forward_zout", row, 0),
-            ("RLdRv (Ом) - назад:", "rld_reverse_zout", row, 2),
+            ("RLdFw (Ом) - вперед:", "rld_out_rv", row, 0),
+            ("RLdRv (Ом) - назад:", "rld_out_rv", row, 2),
         ]
         self._create_entries(frame, load_entries)
         row += 1
 
         load_entries2 = [
-            ("ArgLd (градусы):", "arg_load_zout", row, 0),
+            ("ArgLd (градусы):", "arg_ld", row, 0),
         ]
         self._create_entries(frame, load_entries2)
 
@@ -273,23 +273,23 @@ class SwingTab(BaseTab):
         obj.show_zout = self.vars["show_zout"].get()
 
         # ZIN
-        obj.x1_zin = self._get_float_value("x1_zin")
-        obj.rfpp_zin = self._get_float_value("rfpp_zin")
-        obj.rfpe_zin = self._get_float_value("rfpe_zin")
-        obj.rld_forward_zin = self._get_float_value("rld_forward_zin")
-        obj.rld_reverse_zin = self._get_float_value("rld_reverse_zin")
-        obj.arg_load_zin = self._get_float_value("arg_load_zin")
+        obj.x1_in_fw = self._get_float_value("x1_in_fw")
+        obj.r1_f_in_rv = self._get_float_value("r1_f_in_rv")
+        obj.x1_in_rv = self._get_float_value("x1_in_rv")
+        obj.rld_out_fw = self._get_float_value("rld_out_fw")
+        obj.r1_li_n = self._get_float_value("r1_li_n")
+        obj.arg_ld = self._get_float_value("arg_ld")
         obj.color_zin = self.vars["color_zin"].get()
         obj.linestyle_zin = self.vars["style_zin"].get()
         obj.opacity_zin = self._get_float_value("opacity_zin")
 
         # ZOUT
-        obj.x1_zout = self._get_float_value("x1_zout")
-        obj.rfpp_zout = self._get_float_value("rfpp_zout")
-        obj.rfpe_zout = self._get_float_value("rfpe_zout")
-        obj.rld_forward_zout = self._get_float_value("rld_forward_zout")
-        obj.rld_reverse_zout = self._get_float_value("rld_reverse_zout")
-        obj.arg_load_zout = self._get_float_value("arg_load_zout")
+        obj.x1_in_rv = self._get_float_value("x1_in_rv")
+        obj.rld_out_rv = self._get_float_value("rld_out_rv")
+        obj.rld_out_rv = self._get_float_value("rld_out_rv")
+        obj.rld_out_rv = self._get_float_value("rld_out_rv")
+        obj.rld_out_rv = self._get_float_value("rld_out_rv")
+        obj.arg_ld = self._get_float_value("arg_ld")
         obj.color_zout = self.vars["color_zout"].get()
         obj.linestyle_zout = self.vars["style_zout"].get()
         obj.opacity_zout = self._get_float_value("opacity_zout")
@@ -300,20 +300,20 @@ class SwingTab(BaseTab):
     def _do_cancel(self, obj):
         """Отмена настроек Swing"""
         # ZIN
-        self._set_var("x1_zin", obj.x1_zin)
-        self._set_var("rfpp_zin", obj.rfpp_zin)
-        self._set_var("rfpe_zin", obj.rfpe_zin)
-        self._set_var("rld_forward_zin", obj.rld_forward_zin)
-        self._set_var("rld_reverse_zin", obj.rld_reverse_zin)
-        self._set_var("arg_load_zin", obj.arg_load_zin)
+        self._set_var("x1_in_fw", obj.x1_in_fw)
+        self._set_var("r1_f_in_rv", obj.r1_f_in_rv)
+        self._set_var("x1_in_rv", obj.x1_in_rv)
+        self._set_var("rld_out_fw", obj.rld_out_fw)
+        self._set_var("r1_li_n", obj.r1_li_n)
+        self._set_var("arg_ld", obj.arg_ld)
 
         # ZOUT
-        self._set_var("x1_zout", obj.x1_zout)
-        self._set_var("rfpp_zout", obj.rfpp_zout)
-        self._set_var("rfpe_zout", obj.rfpe_zout)
-        self._set_var("rld_forward_zout", obj.rld_forward_zout)
-        self._set_var("rld_reverse_zout", obj.rld_reverse_zout)
-        self._set_var("arg_load_zout", obj.arg_load_zout)
+        self._set_var("x1_in_rv", obj.x1_in_rv)
+        self._set_var("rld_out_rv", obj.rld_out_rv)
+        self._set_var("rld_out_rv", obj.rld_out_rv)
+        self._set_var("rld_out_rv", obj.rld_out_rv)
+        self._set_var("rld_out_rv", obj.rld_out_rv)
+        self._set_var("arg_ld", obj.arg_ld)
 
     def _on_load_toggle(self):
         """Обработка переключения нагрузки"""
@@ -337,12 +337,12 @@ class SwingTab(BaseTab):
         # Рассчитываем значения на основе терминала
         values = DEFAULT_SWING_VALUES.copy()
         values.update({
-            "x1_zin": terminal.default_x1 * terminal.k_zin,
-            "rfpp_zin": terminal.default_rfpp * terminal.k_zin,
-            "rfpe_zin": terminal.default_rfpe * terminal.k_zin,
-            "x1_zout": terminal.default_x1 * terminal.k_zout,
-            "rfpp_zout": terminal.default_rfpp * terminal.k_zout,
-            "rfpe_zout": terminal.default_rfpe * terminal.k_zout,
+            "x1_in_fw": terminal.default_x1 * terminal.k_zin,
+            "r1_f_in_rv": terminal.default_rfpp * terminal.k_zin,
+            "x1_in_rv": terminal.default_rfpe * terminal.k_zin,
+            "x1_in_rv": terminal.default_x1 * terminal.k_zout,
+            "rld_out_rv": terminal.default_rfpp * terminal.k_zout,
+            "rld_out_rv": terminal.default_rfpe * terminal.k_zout,
         })
 
         for key, value in values.items():

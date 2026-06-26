@@ -17,7 +17,7 @@ from models.calculation_points import CalculationPointsSettings, CalculationPoin
 from models.common_settings import CommonSettings
 from models.selector_calculator import SelectorCalculator
 from models.selector_default_settings import SelectorSettings
-from models.swing_blocking import SwingBlockingSettings, SwingCalculator
+from models.swing_blocking_calculation import SwingBlockingSettings, SwingCalculator
 from models.terminal_types import get_terminal_type
 from models.zone_calculation import DZSettings
 from ui.config_manager import ConfigManager
@@ -109,12 +109,12 @@ class Visualizer:
 
             # Обновляем параметры блокировки от качаний
             if self.swing_settings:
-                self.swing_settings.x1_zin = terminal.default_x1 * terminal.k_zin
-                self.swing_settings.rfpp_zin = terminal.default_rfpp * terminal.k_zin
-                self.swing_settings.rfpe_zin = terminal.default_rfpe * terminal.k_zin
-                self.swing_settings.x1_zout = terminal.default_x1 * terminal.k_zout
-                self.swing_settings.rfpp_zout = terminal.default_rfpp * terminal.k_zout
-                self.swing_settings.rfpe_zout = terminal.default_rfpe * terminal.k_zout
+                self.swing_settings.x1_in_fw = terminal.default_x1 * terminal.k_zin
+                self.swing_settings.r1_f_in_rv = terminal.default_rfpp * terminal.k_zin
+                self.swing_settings.x1_in_rv = terminal.default_rfpe * terminal.k_zin
+                self.swing_settings.x1_in_rv = terminal.default_x1 * terminal.k_zout
+                self.swing_settings.rld_out_rv = terminal.default_rfpp * terminal.k_zout
+                self.swing_settings.rld_out_rv = terminal.default_rfpe * terminal.k_zout
                 self.swing_calculator = SwingCalculator(self.swing_settings)
 
             self.plot_characteristics(keep_limits=False)
@@ -843,7 +843,7 @@ class Visualizer:
 
         # Обновляем калькулятор блокировки от качаний
         if self.swing_settings:
-            from models.swing_blocking import SwingCalculator
+            from models.swing_blocking_calculation import SwingCalculator
             self.swing_calculator = SwingCalculator(self.swing_settings)
 
     def save_as_png(self) -> None:
@@ -922,18 +922,18 @@ class Visualizer:
         # Сохраняем Swing Blocking
         if self.swing_settings:
             config['swing_settings'] = {
-                'x1_zin': self.swing_settings.x1_zin,
-                'rfpp_zin': self.swing_settings.rfpp_zin,
-                'rfpe_zin': self.swing_settings.rfpe_zin,
-                'x1_zout': self.swing_settings.x1_zout,
-                'rfpp_zout': self.swing_settings.rfpp_zout,
-                'rfpe_zout': self.swing_settings.rfpe_zout,
-                'rld_forward_zin': self.swing_settings.rld_forward_zin,
-                'rld_reverse_zin': self.swing_settings.rld_reverse_zin,
-                'arg_load_zin': self.swing_settings.arg_load_zin,
-                'rld_forward_zout': self.swing_settings.rld_forward_zout,
-                'rld_reverse_zout': self.swing_settings.rld_reverse_zout,
-                'arg_load_zout': self.swing_settings.arg_load_zout,
+                'x1_in_fw': self.swing_settings.x1_in_fw,
+                'r1_f_in_rv': self.swing_settings.r1_f_in_rv,
+                'x1_in_rv': self.swing_settings.x1_in_rv,
+                'x1_in_rv': self.swing_settings.x1_in_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_fw': self.swing_settings.rld_out_fw,
+                'r1_li_n': self.swing_settings.r1_li_n,
+                'arg_ld': self.swing_settings.arg_ld,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'arg_ld': self.swing_settings.arg_ld,
                 'load_enabled': self.swing_settings.load_enabled,
                 'enabled': self.swing_settings.enabled,
                 'show_zin': self.swing_settings.show_zin,
@@ -1035,18 +1035,18 @@ class Visualizer:
             # Загружаем Swing Blocking
             if 'swing_settings' in config and self.swing_settings:
                 sw = config['swing_settings']
-                self.swing_settings.x1_zin = sw.get('x1_zin', 37.0)
-                self.swing_settings.rfpp_zin = sw.get('rfpp_zin', 164.0)
-                self.swing_settings.rfpe_zin = sw.get('rfpe_zin', 135.0)
-                self.swing_settings.x1_zout = sw.get('x1_zout', 55.0)
-                self.swing_settings.rfpp_zout = sw.get('rfpp_zout', 200.0)
-                self.swing_settings.rfpe_zout = sw.get('rfpe_zout', 180.0)
-                self.swing_settings.rld_forward_zin = sw.get('rld_forward_zin', 96.0)
-                self.swing_settings.rld_reverse_zin = sw.get('rld_reverse_zin', 96.0)
-                self.swing_settings.arg_load_zin = sw.get('arg_load_zin', 35.0)
-                self.swing_settings.rld_forward_zout = sw.get('rld_forward_zout', 80.0)
-                self.swing_settings.rld_reverse_zout = sw.get('rld_reverse_zout', 80.0)
-                self.swing_settings.arg_load_zout = sw.get('arg_load_zout', 30.0)
+                self.swing_settings.x1_in_fw = sw.get('x1_in_fw', 37.0)
+                self.swing_settings.r1_f_in_rv = sw.get('r1_f_in_rv', 164.0)
+                self.swing_settings.x1_in_rv = sw.get('x1_in_rv', 135.0)
+                self.swing_settings.x1_in_rv = sw.get('x1_in_rv', 55.0)
+                self.swing_settings.rld_out_rv = sw.get('rld_out_rv', 200.0)
+                self.swing_settings.rld_out_rv = sw.get('rld_out_rv', 180.0)
+                self.swing_settings.rld_out_fw = sw.get('rld_out_fw', 96.0)
+                self.swing_settings.r1_li_n = sw.get('r1_li_n', 96.0)
+                self.swing_settings.arg_ld = sw.get('arg_ld', 35.0)
+                self.swing_settings.rld_out_rv = sw.get('rld_out_rv', 80.0)
+                self.swing_settings.rld_out_rv = sw.get('rld_out_rv', 80.0)
+                self.swing_settings.arg_ld = sw.get('arg_ld', 30.0)
                 self.swing_settings.load_enabled = sw.get('load_enabled', True)
                 self.swing_settings.enabled = sw.get('enabled', True)
                 self.swing_settings.show_zin = sw.get('show_zin', True)
@@ -1221,18 +1221,18 @@ class Visualizer:
         # Сохраняем Swing Blocking
         if self.swing_settings:
             config['swing_settings'] = {
-                'x1_zin': self.swing_settings.x1_zin,
-                'rfpp_zin': self.swing_settings.rfpp_zin,
-                'rfpe_zin': self.swing_settings.rfpe_zin,
-                'x1_zout': self.swing_settings.x1_zout,
-                'rfpp_zout': self.swing_settings.rfpp_zout,
-                'rfpe_zout': self.swing_settings.rfpe_zout,
-                'rld_forward_zin': self.swing_settings.rld_forward_zin,
-                'rld_reverse_zin': self.swing_settings.rld_reverse_zin,
-                'arg_load_zin': self.swing_settings.arg_load_zin,
-                'rld_forward_zout': self.swing_settings.rld_forward_zout,
-                'rld_reverse_zout': self.swing_settings.rld_reverse_zout,
-                'arg_load_zout': self.swing_settings.arg_load_zout,
+                'x1_in_fw': self.swing_settings.x1_in_fw,
+                'r1_f_in_rv': self.swing_settings.r1_f_in_rv,
+                'x1_in_rv': self.swing_settings.x1_in_rv,
+                'x1_in_rv': self.swing_settings.x1_in_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_fw': self.swing_settings.rld_out_fw,
+                'r1_li_n': self.swing_settings.r1_li_n,
+                'arg_ld': self.swing_settings.arg_ld,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'rld_out_rv': self.swing_settings.rld_out_rv,
+                'arg_ld': self.swing_settings.arg_ld,
                 'load_enabled': self.swing_settings.load_enabled,
                 'enabled': self.swing_settings.enabled,
                 'show_zin': self.swing_settings.show_zin,

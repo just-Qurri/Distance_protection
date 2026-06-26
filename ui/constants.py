@@ -80,12 +80,12 @@ DEFAULT_SELECTOR_VALUES = {
 }
 
 DEFAULT_SWING_VALUES = {
-    "rld_forward_zin": 96.0,
-    "rld_reverse_zin": 96.0,
-    "arg_load_zin": 35.0,
-    "rld_forward_zout": 80.0,
-    "rld_reverse_zout": 80.0,
-    "arg_load_zout": 30.0,
+    "rld_out_fw": 96.0,
+    "r1_li_n": 96.0,
+    "arg_ld": 35.0,
+    "rld_out_rv": 80.0,
+    "rld_out_rv": 80.0,
+    "arg_ld": 30.0,
     "color_zin": "#FF5722",
     "color_zout": "#FF9800",
     "style_zin": "-",

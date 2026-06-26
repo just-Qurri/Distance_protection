@@ -4,7 +4,7 @@
 
 from models.calculation_points import CalculationPointsSettings
 from models.common_settings import CommonSettings
-from models.swing_blocking import SwingBlockingSettings
+from models.swing_blocking_calculation import SwingBlockingSettings
 from models.zone_default_parameters import RelaySettings
 from ui.visualizer import Visualizer
 
