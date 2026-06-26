@@ -14,12 +14,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Polygon as MPLPolygon
 
 from models.calculation_points import CalculationPointsSettings, CalculationPoint
-from models.common_settings import CommonSettings, set_common_settings
+from models.common_settings import CommonSettings
 from models.selector_calculator import SelectorCalculator
 from models.selector_settings import SelectorSettings
 from models.swing_blocking import SwingBlockingSettings, SwingCalculator
 from models.terminal_types import get_terminal_type
-from models.zone_settings import DZSettings
+from models.zone_calculation import DZSettings
 from ui.config_manager import ConfigManager
 from ui.constants import COLORS, LINESTYLES, FAULT_TYPES
 from ui.events import EventHandler
@@ -31,14 +31,14 @@ from ui.top_panel import TopPanel
 from ui.zone_tab import ZoneTab
 
 
-class REL670Visualizer:
+class Visualizer:
     """Главный класс визуализатора REL670"""
 
     FAULT_TYPES = FAULT_TYPES
 
-    def __init__(self, title: str = "REL670 - Дистанционная защита"):
+    def __init__(self, title):
         self.title = title
-        self.zones: List[DZSettings] = []
+        self.zones: List[DZSettings] = []  # [DZSettings] - не влияет на работу программы, аннотация
         self.common_settings: Optional[CommonSettings] = None
         self.selector: Optional[SelectorSettings] = None
         self.selector_calculator: Optional[SelectorCalculator] = None
@@ -47,15 +47,16 @@ class REL670Visualizer:
         self.points_settings: Optional[CalculationPointsSettings] = None
         self.terminal_code: str = "rel670"
 
-        # UI элементы - создаем позже, после создания root
-        self.root: Optional[tk.Tk] = None
+        # UI элементы - создаем позже, после создания root в create_window ()
+        # Параметры для инициализации окна
+        self.root: Optional[tk.Tk] = None  # Создание окна со всеми виджетами
         self.figure = None
         self.ax = None
         self.canvas = None
 
         # Переменные состояния - создаем позже
-        self.zoom_level: Optional[tk.StringVar] = None
-        self.fault_type: Optional[tk.StringVar] = None
+        self.zoom_level: Optional[tk.StringVar] = None  # Отрисовка по масштабу
+        self.fault_type: Optional[tk.StringVar] = None  # Для понимания типа повреждения
 
         # Компоненты
         self.markers: Optional[MarkerManager] = None
@@ -86,12 +87,11 @@ class REL670Visualizer:
         if zone.zone_id <= len(COLORS):
             zone.color = COLORS[zone.zone_id - 1][0]
             zone.color_name = COLORS[zone.zone_id - 1][1]
-        self.zones.append(zone)
+        self.zones.append(zone)  # Здесь хранятся зоны до отрисовки
 
     def add_common_settings(self, common: CommonSettings) -> None:
         """Добавление общих настроек"""
         self.common_settings = common
-        set_common_settings(common)
 
     def set_terminal_type(self, terminal_code: str) -> None:
         """Установка типа терминала"""

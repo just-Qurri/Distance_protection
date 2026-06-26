@@ -1,7 +1,7 @@
 """
 Настройки реле - конфигурация демо-зон для REL670
 """
-from models.zone_settings import DZSettings, CommonSettings
+from models.zone_calculation import DZSettings
 
 
 class RelaySettings:
@@ -21,6 +21,8 @@ class RelaySettings:
             name="Первая зона",
             enabled=True,
             color='#000000',
+            phase_selector_enabled=False,
+            load_enabled=False
         ))
 
         # Зона 2:
@@ -34,7 +36,10 @@ class RelaySettings:
             direction_mode="forward",
             name="Вторая зона",
             enabled=True,
-            color='#4CAF50'
+            color='#4CAF50',
+            phase_selector_enabled=False,
+            load_enabled=False
+
         ))
 
         # Зона 3:
@@ -48,7 +53,9 @@ class RelaySettings:
             direction_mode="non-directional",
             name="Третья зона",
             enabled=True,
-            color='#FF9800'
+            color='#FF9800',
+            phase_selector_enabled=False,
+            load_enabled=False
         ))
 
         # Зона 4:
@@ -62,7 +69,9 @@ class RelaySettings:
             direction_mode="reverse",
             name="Четвертая зона",
             enabled=True,
-            color='#F44336'
+            color='#F44336',
+            phase_selector_enabled=False,
+            load_enabled=False
         ))
 
         # Зона 5:
@@ -76,19 +85,7 @@ class RelaySettings:
             direction_mode="forward",
             name="Пятая зона",
             enabled=True,
-            color='#9C27B0'
-        ))
-
-    @staticmethod
-    def create_common_settings(visualizer):
-        visualizer.add_common_settings(CommonSettings(
-            u_base=115000,
-            i_base=600,
-            i_secondary=5.0,
-            u_secondary=100.0,
-            angle_quad2=-15.0,
-            angle_quad4=115.0,
-            angle_phs=60.0,
-            name="Общие настройки (U, I, angles)",
-            color='#9C27B0'
+            color='#9C27B0',
+            phase_selector_enabled=False,
+            load_enabled=False
         ))

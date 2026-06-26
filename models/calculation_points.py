@@ -13,7 +13,7 @@ class CalculationPoint:
     r: float
     x: float
     color: str = '#E91E63'
-    enabled: bool = True
+    enabled: bool = False
     description: str = ""
 
 

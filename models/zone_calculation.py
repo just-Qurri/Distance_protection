@@ -2,7 +2,7 @@
 Модель данных для уставок зоны дистанционной защиты REL670
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
@@ -13,35 +13,31 @@ from models.common_settings import CommonSettings
 @dataclass
 class DZSettings:
     """
-    Уставки для зон дистанционной защиты REL670
+    Уставки для зон дистанционной защиты REL670, показывает какие параметры необходимо передавать в этот класс
     """
     # Основные параметры для Ph-Ph
-    x1: float = 3.0
-    r1: float = 1.5
-    rfpp: float = 5.0
+    x1: float
+    r1: float
+    rfpp: float
 
     # Параметры для Ph-E
-    x0: float = 9.0
-    r0: float = 4.5
-    rfpe: float = 8.0
+    x0: float
+    r0: float
+    rfpe: float
 
     # Направленность зоны
-    direction_mode: str = "forward"
+    direction_mode: str
 
     # Параметры согласования
-    phase_selector_enabled: bool = False
-    load_enabled: bool = False
+    phase_selector_enabled: bool
+    load_enabled: bool
 
     # Дополнительные параметры
-    name: str = "Zone"
-    enabled: bool = True
-    color: str = '#2196F3'
-    color_name: str = "Синий"
-    linestyle: str = '-'
-    zone_id: int = 0
-    opacity: float = 0.8
-    show_selector: bool = False
-    type: str = field(default="zone", init=False)
+    name: str
+    enabled: bool
+    color: str
+    linestyle: str = '-'  # всегда будет рисовать границы сплошной линией
+    opacity: float = 0.1  # прозрачность линий границ полигональных характеристик зон
 
     def __post_init__(self):
         valid_modes = ["forward", "reverse", "non-directional"]

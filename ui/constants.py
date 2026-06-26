@@ -49,6 +49,18 @@ INFO_ITEMS = [
 
 # ==================== ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ ====================
 
+DEFAULT_COMMON_SETTINGS = {
+    'u_base': 115000.0,
+    'i_base': 600.0,
+    'i_secondary': 5.0,
+    'u_secondary': 100.0,
+    'angle_quad2': -15.0,
+    'angle_quad4': 115.0,
+    'angle_phs': 60.0,
+    'name': "Общие настройки (U, I, angles)",
+    'color': '#FF9800'
+}
+
 DEFAULT_SELECTOR_VALUES = {
     "x1": 37.0,
     "x0": 43.0,

@@ -3,18 +3,19 @@
 """
 
 from models.calculation_points import CalculationPointsSettings
+from models.common_settings import CommonSettings
 from models.swing_blocking import SwingBlockingSettings
-from ui.main_settings import RelaySettings
-from ui.visualizer import REL670Visualizer
+from models.zone_default_parameters import RelaySettings
+from ui.visualizer import Visualizer
 
 
 def main():
     """Точка входа в приложение"""
-    app = REL670Visualizer("REL670 - Дистанционная защита")
+    app = Visualizer("Дистанционная защита")
 
     # Создаем настройки
-    RelaySettings.create_common_settings(app)
     RelaySettings.create_DZ_zones(app)
+    CommonSettings.create_and_add(app)
 
     # Добавляем настройки блокировки от качаний
     app.swing_settings = SwingBlockingSettings()
