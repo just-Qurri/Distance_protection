@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from models.selector_calculator import SelectorCalculator
-from models.selector_settings import SelectorSettings
+from models.selector_default_settings import SelectorSettings
 from ui.base_tab import BaseTab
 from ui.constants import DEFAULT_SELECTOR_VALUES
 from widgets.modern_button import ModernButton

@@ -9,7 +9,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
-from models.selector_settings import SelectorSettings
+from models.selector_default_settings import SelectorSettings
 
 
 class SelectorCalculator:

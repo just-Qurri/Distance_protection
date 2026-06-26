@@ -16,7 +16,7 @@ from matplotlib.patches import Polygon as MPLPolygon
 from models.calculation_points import CalculationPointsSettings, CalculationPoint
 from models.common_settings import CommonSettings
 from models.selector_calculator import SelectorCalculator
-from models.selector_settings import SelectorSettings
+from models.selector_default_settings import SelectorSettings
 from models.swing_blocking import SwingBlockingSettings, SwingCalculator
 from models.terminal_types import get_terminal_type
 from models.zone_calculation import DZSettings
